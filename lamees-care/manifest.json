@@ -1,0 +1,19 @@
+{
+  "name": "Lamees Care",
+  "short_name": "Lamees Care",
+  "description": "Toilet reminder coordinator for Lamees",
+  "display": "standalone",
+  "orientation": "portrait",
+  "start_url": "./",
+  "scope": "./",
+  "theme_color": "#4E7A6A",
+  "background_color": "#FDF8F2",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

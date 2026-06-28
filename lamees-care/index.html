@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Lamees Care">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#4E7A6A">
+  <link rel="manifest" href="manifest.json">
+  <title>Lamees Care</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #FDF8F2;
+      --card:    #FFFFFF;
+      --primary: #4E7A6A;
+      --accent:  #E8A89C;
+      --text:    #2C2C2C;
+      --muted:   #7A7A7A;
+      --border:  #DDD5C8;
+      --success: #5B9E78;
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #app {
+      max-width: 480px;
+      margin: 0 auto;
+      padding-bottom: 40px;
+    }
+
+    /* ── Header ──────────────────────────────────── */
+    #header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--primary);
+      color: #fff;
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+    }
+
+    #header h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+
+    #clock {
+      font-size: 19px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Location banner ─────────────────────────── */
+    #location-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 10px 16px;
+      font-size: 13px;
+      line-height: 1.45;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.25s;
+    }
+
+    #location-banner.active  { background: #EAF4EE; }
+    #location-banner.pending { background: #FFFBEB; }
+    #location-banner.denied  { background: #FEF2F2; }
+
+    #loc-icon { flex-shrink: 0; font-size: 15px; margin-top: 1px; }
+
+    /* ── Notification prompt ─────────────────────── */
+    #notif-prompt {
+      margin: 12px 16px 0;
+      padding: 12px 14px;
+      background: #FFFBEB;
+      border: 1px solid #F0D080;
+      border-radius: 12px;
+      font-size: 13px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    #notif-prompt.show { display: flex; }
+
+    #notif-prompt button {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 7px 13px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* ── Cards ───────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 16px;
+      margin: 12px 16px 0;
+      border: 1px solid var(--border);
+    }
+
+    .card-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    /* ── Current slot ────────────────────────────── */
+    .slot-window {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .claimed-badge {
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--success);
+      color: #fff;
+      padding: 3px 9px;
+      border-radius: 20px;
+    }
+
+    .member-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--border);
+      gap: 8px;
+    }
+
+    .member-row:last-of-type { border-bottom: none; }
+
+    .member-name { font-weight: 500; font-size: 15px; flex-shrink: 0; }
+
+    .member-status {
+      font-size: 13px;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    .member-status.responded {
+      color: var(--success);
+      font-weight: 600;
+    }
+
+    /* ── Action buttons ──────────────────────────── */
+    .btn-row { display: flex; gap: 10px; margin-top: 14px; }
+
+    .btn {
+      flex: 1;
+      padding: 13px 10px;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.38; cursor: not-allowed; transform: none; }
+
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-skip    { background: var(--border); color: var(--text); }
+
+    .btn-refresh {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      padding: 6px 12px;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+
+    .refresh-note {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 6px;
+      line-height: 1.45;
+    }
+
+    /* ── Upcoming slots ──────────────────────────── */
+    .slot-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .slot-row:last-child { border-bottom: none; }
+
+    .slot-time { font-weight: 600; font-size: 15px; flex-shrink: 0; }
+
+    .slot-who {
+      font-size: 12px;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    /* ── Log ─────────────────────────────────────── */
+    .log-entry {
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .log-entry:last-child { border-bottom: none; }
+
+    .log-action { font-size: 15px; font-weight: 600; }
+
+    .log-meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+    /* ── Empty state ─────────────────────────────── */
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      padding: 18px 0;
+    }
+
+    /* ── Modal (bottom sheet) ────────────────────── */
+    #modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      background: rgba(0,0,0,0.5);
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    #modal-overlay.visible { display: flex; }
+
+    #modal-sheet {
+      width: 100%;
+      max-width: 480px;
+      background: var(--card);
+      border-radius: 24px 24px 0 0;
+      padding: 0 20px 44px;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    #modal-overlay.open #modal-sheet { transform: translateY(0); }
+
+    .modal-handle {
+      width: 36px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: 14px auto 20px;
+    }
+
+    .modal-heading { font-size: 18px; font-weight: 700; text-align: center; margin-bottom: 4px; }
+
+    .modal-sub {
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+      margin-bottom: 18px;
+    }
+
+    .choice-btn {
+      display: block;
+      width: 100%;
+      padding: 15px;
+      margin-bottom: 10px;
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .choice-btn:hover,
+    .choice-btn:focus { background: #EAF4EE; border-color: var(--primary); outline: none; }
+
+    .modal-cancel {
+      display: block;
+      width: 100%;
+      padding: 13px;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 15px;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <header id="header">
+    <h1>🌿 Lamees Care</h1>
+    <div id="clock">--:--:--</div>
+  </header>
+
+  <!-- Location banner -->
+  <div id="location-banner" class="pending">
+    <span id="loc-icon">🟡</span>
+    <span id="loc-text">Requesting location…</span>
+  </div>
+
+  <!-- Notification permission prompt -->
+  <div id="notif-prompt">
+    <span>Enable notifications to receive toilet reminders</span>
+    <button onclick="requestNotifPermission()">Enable</button>
+  </div>
+
+  <!-- Current slot card -->
+  <div class="card">
+    <div class="card-title">Current slot</div>
+    <div id="current-slot-body"></div>
+  </div>
+
+  <!-- Upcoming slots -->
+  <div class="card">
+    <div class="card-title">Upcoming slots</div>
+    <div id="upcoming-body"></div>
+  </div>
+
+  <!-- Today's log -->
+  <div class="card">
+    <div class="card-title">Today's log</div>
+    <div id="log-body"></div>
+  </div>
+
+</div>
+
+<!-- Identity modal -->
+<div id="modal-overlay">
+  <div id="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-heading" id="modal-heading">Who responded?</div>
+    <div class="modal-sub" id="modal-sub"></div>
+    <div id="modal-list"></div>
+    <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ════════════════════════════════════════════════
+// CONSTANTS
+// ════════════════════════════════════════════════
+
+const LAMEES = { lat: -37.7388, lng: 144.9007, radius: 300 };
+
+const SLOTS = [800, 1000, 1200, 1400, 1600, 1800, 2000, 2200];
+
+const MEMBERS = [
+  { id: 'sezen',    name: 'Mother Sezen',    wStart: 630,  wEnd: 2400, locRequired: false },
+  { id: 'lina',     name: 'Sister Lina',     wStart: 630,  wEnd: 2100, locRequired: false },
+  { id: 'edris',    name: 'Brother Edris',   wStart: 630,  wEnd: 2100, locRequired: false },
+  { id: 'melis',    name: 'Auntie Melis',    wStart: 630,  wEnd: 2400, locRequired: true  },
+  { id: 'seher',    name: 'Auntie Seher',    wStart: 630,  wEnd: 2400, locRequired: true  },
+  { id: 'abdullah', name: 'Father Abdullah', wStart: 630,  wEnd: 2400, locRequired: true  },
+];
+
+// ════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════
+
+let locStatus = 'pending'; // 'pending' | 'active' | 'denied'
+let locData   = null;      // { lat, lng, distance }
+let modalSlot   = null;
+let modalAction = null;
+
+// ════════════════════════════════════════════════
+// TIME HELPERS
+// ════════════════════════════════════════════════
+
+const getHHMM = () => {
+  const d = new Date();
+  return d.getHours() * 100 + d.getMinutes();
+};
+
+const getHHMMSS = () => {
+  const d = new Date();
+  return [d.getHours(), d.getMinutes(), d.getSeconds()]
+    .map(n => String(n).padStart(2, '0')).join(':');
+};
+
+const fmtHHMM = v => {
+  const h = Math.floor(v / 100);
+  const m = v % 100;
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+};
+
+const todayISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
+
+const logKey   = () => `lameesLog_${todayISO()}`;
+const firedKey = () => `lameesSlotsFired_${todayISO()}`;
+const LOC_CACHE_KEY = 'lameesLocCache';
+
+// ════════════════════════════════════════════════
+// GEOLOCATION
+// ════════════════════════════════════════════════
+
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const r = x => x * Math.PI / 180;
+  const dLat = r(lat2 - lat1);
+  const dLng = r(lng2 - lng1);
+  const a = Math.sin(dLat/2)**2 +
+            Math.cos(r(lat1)) * Math.cos(r(lat2)) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function onLocSuccess(pos) {
+  const dist = Math.round(haversine(
+    pos.coords.latitude, pos.coords.longitude,
+    LAMEES.lat, LAMEES.lng
+  ));
+  locData   = { lat: pos.coords.latitude, lng: pos.coords.longitude, distance: dist };
+  locStatus = 'active';
+  sessionStorage.setItem(LOC_CACHE_KEY, JSON.stringify({ ...locData, ts: Date.now() }));
+  renderLocationBanner();
+  renderCurrentSlot();
+  renderUpcoming();
+}
+
+function onLocError() {
+  locStatus = 'denied';
+  locData   = null;
+  renderLocationBanner();
+  renderCurrentSlot();
+  renderUpcoming();
+}
+
+function requestLocation() {
+  if (!navigator.geolocation) { onLocError(); return; }
+  navigator.geolocation.getCurrentPosition(onLocSuccess, onLocError, {
+    enableHighAccuracy: true,
+    timeout: 15000,
+    maximumAge: 300000,
+  });
+}
+
+function renderLocationBanner() {
+  const banner = document.getElementById('location-banner');
+  const icon   = document.getElementById('loc-icon');
+  const text   = document.getElementById('loc-text');
+  banner.className = locStatus;
+  if (locStatus === 'active') {
+    icon.textContent = '🟢';
+    text.textContent = `Location active — ${locData.distance}m from Lamees's address`;
+  } else if (locStatus === 'pending') {
+    icon.textContent = '🟡';
+    text.textContent = 'Requesting location…';
+  } else {
+    icon.textContent = '🔴';
+    text.textContent = 'Location denied — members with location requirement will not be notified';
+  }
+}
+
+// ════════════════════════════════════════════════
+// ELIGIBILITY
+// ════════════════════════════════════════════════
+
+function isMemberEligible(member, slotHHMM) {
+  if (slotHHMM < member.wStart || slotHHMM >= member.wEnd) return false;
+  if (member.locRequired) {
+    if (locStatus !== 'active' || !locData) return false;
+    if (locData.distance > LAMEES.radius) return false;
+  }
+  return true;
+}
+
+// Returns { type, entry? } describing a member's status for a given slot.
+function getMemberSlotStatus(member, slotHHMM, log, firedSlots) {
+  const entry = log.find(e => e.slotHHMM === slotHHMM);
+  if (entry && entry.respondentId === member.id) return { type: 'responded', entry };
+  if (entry) return { type: 'claimed', entry };
+  if (slotHHMM < member.wStart || slotHHMM >= member.wEnd) return { type: 'outside' };
+  if (member.locRequired) {
+    if (locStatus !== 'active' || !locData || locData.distance > LAMEES.radius) {
+      return { type: 'away' };
+    }
+  }
+  if (firedSlots.includes(slotHHMM)) return { type: 'notified' };
+  return { type: 'waiting' };
+}
+
+function memberStatusHTML(s) {
+  switch (s.type) {
+    case 'responded': {
+      const lbl = s.entry.action === 'done' ? '✅ Took Lamees' : '⏭ Skipped';
+      return `<span class="member-status responded">${lbl} at ${s.entry.respondedAt}</span>`;
+    }
+    case 'claimed':
+      return `<span class="member-status">✅ ${s.entry.respondentName}</span>`;
+    case 'outside':
+      return `<span class="member-status">🌙 Outside hours</span>`;
+    case 'away':
+      return `<span class="member-status">📍 Not nearby</span>`;
+    case 'notified':
+      return `<span class="member-status">🔔 Notified</span>`;
+    default:
+      return `<span class="member-status">⏳ Waiting</span>`;
+  }
+}
+
+// ════════════════════════════════════════════════
+// SLOT LOGIC
+// ════════════════════════════════════════════════
+
+function getFiredSlots() {
+  const raw = sessionStorage.getItem(firedKey());
+  return raw ? JSON.parse(raw) : [];
+}
+
+function markSlotFired(slotHHMM) {
+  const fired = getFiredSlots();
+  if (!fired.includes(slotHHMM)) {
+    fired.push(slotHHMM);
+    sessionStorage.setItem(firedKey(), JSON.stringify(fired));
+  }
+}
+
+function getCurrentSlotHHMM() {
+  const now = getHHMM();
+  let current = null;
+  for (const s of SLOTS) {
+    if (now >= s) current = s;
+    else break;
+  }
+  return current;
+}
+
+function getSlotWindowEnd(slotHHMM) {
+  const idx = SLOTS.indexOf(slotHHMM);
+  if (idx < 0) return null;
+  return idx < SLOTS.length - 1 ? SLOTS[idx + 1] : 2400;
+}
+
+function getUpcomingSlots(n) {
+  const now = getHHMM();
+  return SLOTS.filter(s => s > now).slice(0, n);
+}
+
+// On startup: silently mark all slots that clearly already passed (no notification).
+function catchUpSlots() {
+  const now = getHHMM();
+  const fired = getFiredSlots();
+  for (const slot of SLOTS) {
+    if (slot < now && !fired.includes(slot)) markSlotFired(slot);
+  }
+}
+
+// Poller: fire any slot whose threshold we just crossed for the first time.
+function checkAndFireSlots() {
+  const now = getHHMM();
+  const fired = getFiredSlots();
+  for (const slot of SLOTS) {
+    if (now >= slot && !fired.includes(slot)) fireSlot(slot);
+  }
+}
+
+function fireSlot(slotHHMM) {
+  markSlotFired(slotHHMM);
+
+  const eligible = MEMBERS.filter(m => isMemberEligible(m, slotHHMM));
+  if (eligible.length === 0) { renderCurrentSlot(); return; }
+
+  if (Notification.permission === 'granted') {
+    try {
+      const notif = new Notification('🚽 Lamees needs the toilet!', {
+        body: `${fmtHHMM(slotHHMM)} slot — please take Lamees to the toilet. Tap to respond.`,
+        tag: `lamees-${slotHHMM}`,
+        requireInteraction: true,
+      });
+      notif.onclick = () => { window.focus(); openModal(slotHHMM, 'done'); };
+    } catch (_) { /* some browsers block Notification() from non-secure contexts */ }
+  }
+
+  renderCurrentSlot();
+}
+
+// ════════════════════════════════════════════════
+// LOCALSTORAGE LOG
+// ════════════════════════════════════════════════
+
+function getTodayLog() {
+  const raw = localStorage.getItem(logKey());
+  return raw ? JSON.parse(raw) : [];
+}
+
+function recordResponse(slotHHMM, memberId, action) {
+  const log = getTodayLog();
+  if (log.find(e => e.slotHHMM === slotHHMM)) return false; // already claimed
+  const member = MEMBERS.find(m => m.id === memberId);
+  const now = new Date();
+  const respondedAt = [now.getHours(), now.getMinutes()]
+    .map(n => String(n).padStart(2, '0')).join(':');
+  log.push({
+    slotHHMM,
+    respondentId: memberId,
+    respondentName: member.name,
+    action,
+    respondedAt,
+    respondedAtMs: now.getTime(),
+  });
+  localStorage.setItem(logKey(), JSON.stringify(log));
+  return true;
+}
+
+// ════════════════════════════════════════════════
+// MODAL
+// ════════════════════════════════════════════════
+
+function openModal(slotHHMM, action) {
+  const log = getTodayLog();
+  if (log.find(e => e.slotHHMM === slotHHMM)) { renderCurrentSlot(); return; }
+
+  const eligible = MEMBERS.filter(m => isMemberEligible(m, slotHHMM));
+  if (eligible.length === 0) return;
+
+  modalSlot   = slotHHMM;
+  modalAction = action;
+
+  document.getElementById('modal-heading').textContent =
+    action === 'done' ? 'Who took Lamees?' : 'Who is skipping?';
+  document.getElementById('modal-sub').textContent = `${fmtHHMM(slotHHMM)} slot`;
+
+  const list = document.getElementById('modal-list');
+  list.innerHTML = '';
+  eligible.forEach(m => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.textContent = m.name;
+    btn.onclick = () => confirmResponse(m.id);
+    list.appendChild(btn);
+  });
+
+  const overlay = document.getElementById('modal-overlay');
+  overlay.classList.add('visible');
+  requestAnimationFrame(() => overlay.classList.add('open'));
+}
+
+function closeModal() {
+  const overlay = document.getElementById('modal-overlay');
+  overlay.classList.remove('open');
+  setTimeout(() => overlay.classList.remove('visible'), 310);
+  modalSlot   = null;
+  modalAction = null;
+}
+
+function confirmResponse(memberId) {
+  if (modalSlot === null) return;
+  const slot   = modalSlot;
+  const action = modalAction;
+  closeModal();
+  if (recordResponse(slot, memberId, action)) {
+    renderCurrentSlot();
+    renderLog();
+  }
+}
+
+// ════════════════════════════════════════════════
+// NOTIFICATIONS
+// ════════════════════════════════════════════════
+
+function requestNotifPermission() {
+  if (!('Notification' in window)) return;
+  Notification.requestPermission().then(() => updateNotifPrompt());
+}
+
+function updateNotifPrompt() {
+  const el = document.getElementById('notif-prompt');
+  const granted = 'Notification' in window && Notification.permission === 'granted';
+  el.classList.toggle('show', !granted);
+}
+
+// ════════════════════════════════════════════════
+// RENDERING
+// ════════════════════════════════════════════════
+
+function renderCurrentSlot() {
+  const slotHHMM = getCurrentSlotHHMM();
+  const body = document.getElementById('current-slot-body');
+
+  if (slotHHMM === null) {
+    body.innerHTML = `<div class="empty">No active slot — first slot at 08:00</div>`;
+    return;
+  }
+
+  const windowEnd  = getSlotWindowEnd(slotHHMM);
+  const log        = getTodayLog();
+  const firedSlots = getFiredSlots();
+  const isClaimed  = !!log.find(e => e.slotHHMM === slotHHMM);
+
+  let html = `<div class="slot-window">
+    ${fmtHHMM(slotHHMM)} – ${fmtHHMM(windowEnd)}
+    ${isClaimed ? '<span class="claimed-badge">Claimed</span>' : ''}
+  </div>`;
+
+  MEMBERS.forEach(m => {
+    const status = getMemberSlotStatus(m, slotHHMM, log, firedSlots);
+    html += `<div class="member-row">
+      <div class="member-name">${m.name}</div>
+      ${memberStatusHTML(status)}
+    </div>`;
+  });
+
+  html += `<div class="btn-row">
+    <button class="btn btn-primary" onclick="openModal(${slotHHMM},'done')" ${isClaimed ? 'disabled' : ''}>✅ Took Lamees</button>
+    <button class="btn btn-skip"    onclick="openModal(${slotHHMM},'skip')" ${isClaimed ? 'disabled' : ''}>⏭ Skip</button>
+  </div>`;
+
+  html += `<button class="btn-refresh" onclick="manualRefresh()">🔄 Refresh</button>`;
+  html += `<p class="refresh-note">If another family member responded on their device, tap Refresh to see the updated status.</p>`;
+
+  body.innerHTML = html;
+}
+
+function renderUpcoming() {
+  const slots = getUpcomingSlots(4);
+  const body  = document.getElementById('upcoming-body');
+
+  if (slots.length === 0) {
+    body.innerHTML = `<div class="empty">No more slots today</div>`;
+    return;
+  }
+
+  body.innerHTML = slots.map(slotHHMM => {
+    const eligible = MEMBERS.filter(m => isMemberEligible(m, slotHHMM));
+    const who = eligible.length > 0
+      ? eligible.map(m => m.name.split(' ').pop()).join(', ')
+      : 'None eligible';
+    return `<div class="slot-row">
+      <div class="slot-time">${fmtHHMM(slotHHMM)}</div>
+      <div class="slot-who">${who}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderLog() {
+  const log  = [...getTodayLog()].reverse();
+  const body = document.getElementById('log-body');
+
+  if (log.length === 0) {
+    body.innerHTML = `<div class="empty">No responses yet today</div>`;
+    return;
+  }
+
+  body.innerHTML = log.map(entry => {
+    const lbl = entry.action === 'done' ? '✅ Took Lamees' : '⏭ Skipped';
+    return `<div class="log-entry">
+      <div class="log-action">${lbl} — ${entry.respondentName}</div>
+      <div class="log-meta">${fmtHHMM(entry.slotHHMM)} slot · responded at ${entry.respondedAt}</div>
+    </div>`;
+  }).join('');
+}
+
+function manualRefresh() {
+  renderCurrentSlot();
+  renderUpcoming();
+  renderLog();
+}
+
+// ════════════════════════════════════════════════
+// CLOCK
+// ════════════════════════════════════════════════
+
+function tickClock() {
+  document.getElementById('clock').textContent = getHHMMSS();
+}
+
+// ════════════════════════════════════════════════
+// CROSS-TAB SYNC (same browser, different tabs)
+// ════════════════════════════════════════════════
+
+window.addEventListener('storage', e => {
+  if (e.key && e.key.startsWith('lameesLog_')) {
+    renderCurrentSlot();
+    renderLog();
+  }
+});
+
+// ════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════
+
+function init() {
+  // Clock — tick every second
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  // Notifications
+  updateNotifPrompt();
+
+  // Location — restore session cache first, then refresh
+  const cached = sessionStorage.getItem(LOC_CACHE_KEY);
+  if (cached) {
+    const c = JSON.parse(cached);
+    if (Date.now() - c.ts < 10 * 60 * 1000) {
+      locData   = { lat: c.lat, lng: c.lng, distance: c.distance };
+      locStatus = 'active';
+      renderLocationBanner();
+    }
+  }
+  requestLocation();
+  setInterval(requestLocation, 10 * 60 * 1000);
+
+  // Slots: silently mark past slots, then start polling
+  catchUpSlots();
+
+  // Initial render
+  renderCurrentSlot();
+  renderUpcoming();
+  renderLog();
+
+  // Poller: every 60 s, check for new slot crossings + refresh UI
+  setInterval(() => {
+    checkAndFireSlots();
+    renderCurrentSlot();
+    renderUpcoming();
+  }, 60_000);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
