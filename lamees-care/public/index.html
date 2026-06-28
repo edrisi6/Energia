@@ -341,7 +341,7 @@
 
   <!-- Notification permission prompt -->
   <div id="notif-prompt">
-    <span>Enable notifications to receive toilet reminders</span>
+    <span>Enable notifications so this device receives reminders</span>
     <button onclick="requestNotifPermission()">Enable</button>
   </div>
 
@@ -400,8 +400,15 @@ const MEMBERS = [
 // STATE
 // ════════════════════════════════════════════════
 
+// Server-backed — populated on load and on every push update
+let todayLog   = [];
+let firedSlots = [];
+
+// Geo — client-side only
 let locStatus = 'idle'; // 'idle' | 'pending' | 'active' | 'denied'
-let locData   = null;  // { lat, lng, distance }
+let locData   = null;   // { lat, lng, distance }
+
+// Modal
 let modalSlot   = null;
 let modalAction = null;
 
@@ -420,23 +427,136 @@ const getHHMMSS = () => {
     .map(n => String(n).padStart(2, '0')).join(':');
 };
 
-const fmtHHMM = v => {
-  const h = Math.floor(v / 100);
-  const m = v % 100;
-  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
-};
+const fmtHHMM = v =>
+  String(Math.floor(v / 100)).padStart(2, '0') + ':' + String(v % 100).padStart(2, '0');
 
-const todayISO = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-};
-
-const logKey      = () => `lameesLog_${todayISO()}`;
-const firedKey    = () => `lameesSlotsFired_${todayISO()}`;
-const geoKey      = () => `lameesGeoChecked_${todayISO()}`;
-
-// Convert HHMM integer to minutes since midnight for safe arithmetic.
+const geoKey     = () => `lameesGeoChecked_${new Date().toISOString().slice(0, 10)}`;
 const hhmmToMins = v => Math.floor(v / 100) * 60 + (v % 100);
+
+// ════════════════════════════════════════════════
+// SERVER API
+// ════════════════════════════════════════════════
+
+async function loadTodayData() {
+  try {
+    const res  = await fetch('/api/today');
+    const data = await res.json();
+    todayLog   = data.log;
+    firedSlots = data.firedSlots;
+    renderCurrentSlot();
+    renderUpcoming();
+    renderLog();
+  } catch (e) {
+    console.error('Failed to load today data:', e);
+  }
+}
+
+async function recordResponse(slotHHMM, memberId, action) {
+  const member = MEMBERS.find(m => m.id === memberId);
+  const now = new Date();
+  const respondedAt = [now.getHours(), now.getMinutes()]
+    .map(n => String(n).padStart(2, '0')).join(':');
+  try {
+    const res = await fetch('/api/respond', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        slotHHMM,
+        respondentId:   memberId,
+        respondentName: member.name,
+        action,
+        respondedAt,
+        respondedAtMs: now.getTime(),
+      }),
+    });
+    if (res.status === 409) return false; // already claimed by someone else
+    if (!res.ok) throw new Error(await res.text());
+    await loadTodayData(); // refresh everything
+    return true;
+  } catch (e) {
+    console.error('Failed to record response:', e);
+    return false;
+  }
+}
+
+// ════════════════════════════════════════════════
+// SERVICE WORKER + PUSH
+// ════════════════════════════════════════════════
+
+function urlBase64ToUint8Array(b64) {
+  const padding = '='.repeat((4 - b64.length % 4) % 4);
+  const base64  = (b64 + padding).replace(/-/g, '+').replace(/_/g, '/');
+  return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+}
+
+async function ensurePushSubscription(reg) {
+  try {
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const { publicKey } = await fetch('/api/vapid-public-key').then(r => r.json());
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+    }
+    // Always re-register with the server in case subscription changed
+    await fetch('/api/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sub.toJSON()),
+    });
+  } catch (e) {
+    console.error('Push subscription failed:', e);
+  }
+}
+
+async function initServiceWorker() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+  const reg = await navigator.serviceWorker.register('/sw.js');
+
+  // Messages from the service worker
+  navigator.serviceWorker.addEventListener('message', e => {
+    const { type, slotHHMM } = e.data || {};
+    if (type === 'claimed' || type === 'refresh') {
+      loadTodayData();
+    } else if (type === 'open-modal') {
+      openModal(slotHHMM, 'done');
+    }
+  });
+
+  // If the app was opened by tapping a notification (was closed at the time)
+  const slotParam = new URLSearchParams(location.search).get('slot');
+  if (slotParam) {
+    history.replaceState(null, '', '/');
+    setTimeout(() => openModal(parseInt(slotParam, 10), 'done'), 400);
+  }
+
+  // Subscribe if permission already granted
+  if (Notification.permission === 'granted') {
+    await ensurePushSubscription(reg);
+  }
+}
+
+// ════════════════════════════════════════════════
+// NOTIFICATIONS
+// ════════════════════════════════════════════════
+
+async function requestNotifPermission() {
+  if (!('Notification' in window)) return;
+  const perm = await Notification.requestPermission();
+  updateNotifPrompt();
+  if (perm === 'granted') {
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (reg) await ensurePushSubscription(reg);
+  }
+}
+
+function updateNotifPrompt() {
+  const el      = document.getElementById('notif-prompt');
+  const granted = 'Notification' in window && Notification.permission === 'granted';
+  el.classList.toggle('show', !granted);
+}
 
 // ════════════════════════════════════════════════
 // GEOLOCATION
@@ -445,17 +565,14 @@ const hhmmToMins = v => Math.floor(v / 100) * 60 + (v % 100);
 function haversine(lat1, lng1, lat2, lng2) {
   const R = 6371000;
   const r = x => x * Math.PI / 180;
-  const dLat = r(lat2 - lat1);
-  const dLng = r(lng2 - lng1);
-  const a = Math.sin(dLat/2)**2 +
-            Math.cos(r(lat1)) * Math.cos(r(lat2)) * Math.sin(dLng/2)**2;
+  const dLat = r(lat2 - lat1), dLng = r(lng2 - lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(r(lat1)) * Math.cos(r(lat2)) * Math.sin(dLng/2)**2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 function onLocSuccess(pos) {
   const dist = Math.round(haversine(
-    pos.coords.latitude, pos.coords.longitude,
-    LAMEES.lat, LAMEES.lng
+    pos.coords.latitude, pos.coords.longitude, LAMEES.lat, LAMEES.lng
   ));
   locData   = { lat: pos.coords.latitude, lng: pos.coords.longitude, distance: dist };
   locStatus = 'active';
@@ -477,13 +594,10 @@ function requestLocation() {
   renderLocationBanner();
   if (!navigator.geolocation) { onLocError(); return; }
   navigator.geolocation.getCurrentPosition(onLocSuccess, onLocError, {
-    enableHighAccuracy: true,
-    timeout: 15000,
-    maximumAge: 0, // always fresh — only called 2 min before a slot
+    enableHighAccuracy: true, timeout: 15000, maximumAge: 0,
   });
 }
 
-// Track which slots have already had their pre-slot geo check triggered.
 function getGeoCheckedSlots() {
   const raw = sessionStorage.getItem(geoKey());
   return raw ? JSON.parse(raw) : [];
@@ -497,8 +611,6 @@ function markGeoChecked(slotHHMM) {
   }
 }
 
-// Called on init and every 60 s: if we're within the 2-minute pre-slot window
-// for a slot that hasn't been geo-checked yet, fire a location request.
 function checkPreSlotGeo() {
   const nowMins = hhmmToMins(getHHMM());
   const checked = getGeoCheckedSlots();
@@ -545,17 +657,14 @@ function isMemberEligible(member, slotHHMM) {
   return true;
 }
 
-// Returns { type, entry? } describing a member's status for a given slot.
-function getMemberSlotStatus(member, slotHHMM, log, firedSlots) {
-  const entry = log.find(e => e.slotHHMM === slotHHMM);
-  if (entry && entry.respondentId === member.id) return { type: 'responded', entry };
+function getMemberSlotStatus(member, slotHHMM) {
+  const entry = todayLog.find(e => e.slot_hhmm === slotHHMM);
+  if (entry && entry.respondent_id === member.id) return { type: 'responded', entry };
   if (entry) return { type: 'claimed', entry };
   if (slotHHMM < member.wStart || slotHHMM >= member.wEnd) return { type: 'outside' };
   if (member.locRequired) {
     if (locStatus === 'idle' || locStatus === 'pending') return { type: 'geo-pending' };
-    if (locStatus === 'denied' || !locData || locData.distance > LAMEES.radius) {
-      return { type: 'away' };
-    }
+    if (locStatus === 'denied' || !locData || locData.distance > LAMEES.radius) return { type: 'away' };
   }
   if (firedSlots.includes(slotHHMM)) return { type: 'notified' };
   return { type: 'waiting' };
@@ -565,10 +674,10 @@ function memberStatusHTML(s) {
   switch (s.type) {
     case 'responded': {
       const lbl = s.entry.action === 'done' ? '✅ Took Lamees' : '⏭ Skipped';
-      return `<span class="member-status responded">${lbl} at ${s.entry.respondedAt}</span>`;
+      return `<span class="member-status responded">${lbl} at ${s.entry.responded_at}</span>`;
     }
     case 'claimed':
-      return `<span class="member-status">✅ ${s.entry.respondentName}</span>`;
+      return `<span class="member-status">✅ ${s.entry.respondent_name}</span>`;
     case 'outside':
       return `<span class="member-status">🌙 Outside hours</span>`;
     case 'geo-pending':
@@ -583,21 +692,8 @@ function memberStatusHTML(s) {
 }
 
 // ════════════════════════════════════════════════
-// SLOT LOGIC
+// SLOT HELPERS
 // ════════════════════════════════════════════════
-
-function getFiredSlots() {
-  const raw = sessionStorage.getItem(firedKey());
-  return raw ? JSON.parse(raw) : [];
-}
-
-function markSlotFired(slotHHMM) {
-  const fired = getFiredSlots();
-  if (!fired.includes(slotHHMM)) {
-    fired.push(slotHHMM);
-    sessionStorage.setItem(firedKey(), JSON.stringify(fired));
-  }
-}
 
 function getCurrentSlotHHMM() {
   const now = getHHMM();
@@ -620,80 +716,15 @@ function getUpcomingSlots(n) {
   return SLOTS.filter(s => s > now).slice(0, n);
 }
 
-// On startup: silently mark all slots that clearly already passed (no notification).
-function catchUpSlots() {
-  const now = getHHMM();
-  const fired = getFiredSlots();
-  for (const slot of SLOTS) {
-    if (slot < now && !fired.includes(slot)) markSlotFired(slot);
-  }
-}
-
-// Poller: fire any slot whose threshold we just crossed for the first time.
-function checkAndFireSlots() {
-  const now = getHHMM();
-  const fired = getFiredSlots();
-  for (const slot of SLOTS) {
-    if (now >= slot && !fired.includes(slot)) fireSlot(slot);
-  }
-}
-
-function fireSlot(slotHHMM) {
-  markSlotFired(slotHHMM);
-
-  const eligible = MEMBERS.filter(m => isMemberEligible(m, slotHHMM));
-  if (eligible.length === 0) { renderCurrentSlot(); return; }
-
-  if (Notification.permission === 'granted') {
-    try {
-      const notif = new Notification('🚽 Lamees needs the toilet!', {
-        body: `${fmtHHMM(slotHHMM)} slot — please take Lamees to the toilet. Tap to respond.`,
-        tag: `lamees-${slotHHMM}`,
-        requireInteraction: true,
-      });
-      notif.onclick = () => { window.focus(); openModal(slotHHMM, 'done'); };
-    } catch (_) { /* some browsers block Notification() from non-secure contexts */ }
-  }
-
-  renderCurrentSlot();
-}
-
-// ════════════════════════════════════════════════
-// LOCALSTORAGE LOG
-// ════════════════════════════════════════════════
-
-function getTodayLog() {
-  const raw = localStorage.getItem(logKey());
-  return raw ? JSON.parse(raw) : [];
-}
-
-function recordResponse(slotHHMM, memberId, action) {
-  const log = getTodayLog();
-  if (log.find(e => e.slotHHMM === slotHHMM)) return false; // already claimed
-  const member = MEMBERS.find(m => m.id === memberId);
-  const now = new Date();
-  const respondedAt = [now.getHours(), now.getMinutes()]
-    .map(n => String(n).padStart(2, '0')).join(':');
-  log.push({
-    slotHHMM,
-    respondentId: memberId,
-    respondentName: member.name,
-    action,
-    respondedAt,
-    respondedAtMs: now.getTime(),
-  });
-  localStorage.setItem(logKey(), JSON.stringify(log));
-  return true;
-}
-
 // ════════════════════════════════════════════════
 // MODAL
 // ════════════════════════════════════════════════
 
 function openModal(slotHHMM, action) {
-  const log = getTodayLog();
-  if (log.find(e => e.slotHHMM === slotHHMM)) { renderCurrentSlot(); return; }
-
+  if (todayLog.find(e => e.slot_hhmm === slotHHMM)) {
+    loadTodayData(); // slot already claimed — just refresh
+    return;
+  }
   const eligible = MEMBERS.filter(m => isMemberEligible(m, slotHHMM));
   if (eligible.length === 0) return;
 
@@ -727,30 +758,12 @@ function closeModal() {
   modalAction = null;
 }
 
-function confirmResponse(memberId) {
+async function confirmResponse(memberId) {
   if (modalSlot === null) return;
   const slot   = modalSlot;
   const action = modalAction;
   closeModal();
-  if (recordResponse(slot, memberId, action)) {
-    renderCurrentSlot();
-    renderLog();
-  }
-}
-
-// ════════════════════════════════════════════════
-// NOTIFICATIONS
-// ════════════════════════════════════════════════
-
-function requestNotifPermission() {
-  if (!('Notification' in window)) return;
-  Notification.requestPermission().then(() => updateNotifPrompt());
-}
-
-function updateNotifPrompt() {
-  const el = document.getElementById('notif-prompt');
-  const granted = 'Notification' in window && Notification.permission === 'granted';
-  el.classList.toggle('show', !granted);
+  await recordResponse(slot, memberId, action);
 }
 
 // ════════════════════════════════════════════════
@@ -759,17 +772,15 @@ function updateNotifPrompt() {
 
 function renderCurrentSlot() {
   const slotHHMM = getCurrentSlotHHMM();
-  const body = document.getElementById('current-slot-body');
+  const body     = document.getElementById('current-slot-body');
 
   if (slotHHMM === null) {
     body.innerHTML = `<div class="empty">No active slot — first slot at 08:00</div>`;
     return;
   }
 
-  const windowEnd  = getSlotWindowEnd(slotHHMM);
-  const log        = getTodayLog();
-  const firedSlots = getFiredSlots();
-  const isClaimed  = !!log.find(e => e.slotHHMM === slotHHMM);
+  const windowEnd = getSlotWindowEnd(slotHHMM);
+  const isClaimed = !!todayLog.find(e => e.slot_hhmm === slotHHMM);
 
   let html = `<div class="slot-window">
     ${fmtHHMM(slotHHMM)} – ${fmtHHMM(windowEnd)}
@@ -777,7 +788,7 @@ function renderCurrentSlot() {
   </div>`;
 
   MEMBERS.forEach(m => {
-    const status = getMemberSlotStatus(m, slotHHMM, log, firedSlots);
+    const status = getMemberSlotStatus(m, slotHHMM);
     html += `<div class="member-row">
       <div class="member-name">${m.name}</div>
       ${memberStatusHTML(status)}
@@ -790,7 +801,7 @@ function renderCurrentSlot() {
   </div>`;
 
   html += `<button class="btn-refresh" onclick="manualRefresh()">🔄 Refresh</button>`;
-  html += `<p class="refresh-note">If another family member responded on their device, tap Refresh to see the updated status.</p>`;
+  html += `<p class="refresh-note">Updates arrive automatically. Tap Refresh if status looks outdated.</p>`;
 
   body.innerHTML = html;
 }
@@ -817,7 +828,7 @@ function renderUpcoming() {
 }
 
 function renderLog() {
-  const log  = [...getTodayLog()].reverse();
+  const log  = [...todayLog].reverse();
   const body = document.getElementById('log-body');
 
   if (log.length === 0) {
@@ -828,16 +839,14 @@ function renderLog() {
   body.innerHTML = log.map(entry => {
     const lbl = entry.action === 'done' ? '✅ Took Lamees' : '⏭ Skipped';
     return `<div class="log-entry">
-      <div class="log-action">${lbl} — ${entry.respondentName}</div>
-      <div class="log-meta">${fmtHHMM(entry.slotHHMM)} slot · responded at ${entry.respondedAt}</div>
+      <div class="log-action">${lbl} — ${entry.respondent_name}</div>
+      <div class="log-meta">${fmtHHMM(entry.slot_hhmm)} slot · responded at ${entry.responded_at}</div>
     </div>`;
   }).join('');
 }
 
-function manualRefresh() {
-  renderCurrentSlot();
-  renderUpcoming();
-  renderLog();
+async function manualRefresh() {
+  await loadTodayData();
 }
 
 // ════════════════════════════════════════════════
@@ -849,46 +858,33 @@ function tickClock() {
 }
 
 // ════════════════════════════════════════════════
-// CROSS-TAB SYNC (same browser, different tabs)
-// ════════════════════════════════════════════════
-
-window.addEventListener('storage', e => {
-  if (e.key && e.key.startsWith('lameesLog_')) {
-    renderCurrentSlot();
-    renderLog();
-  }
-});
-
-// ════════════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════════════
 
-function init() {
-  // Clock — tick every second
+async function init() {
+  // Clock
   tickClock();
   setInterval(tickClock, 1000);
 
-  // Notifications
+  // Service worker + push
+  await initServiceWorker();
+
+  // Notifications prompt
   updateNotifPrompt();
 
-  // Slots: silently mark past slots, then start polling
-  catchUpSlots();
-
-  // Geo: check if we're already inside a 2-minute pre-slot window on load
+  // Geo: check if already in pre-slot window on load
   checkPreSlotGeo();
 
-  // Initial render
-  renderLocationBanner();
-  renderCurrentSlot();
-  renderUpcoming();
-  renderLog();
+  // Initial data load from server
+  await loadTodayData();
 
-  // Poller: every 60 s — check geo window, fire slots, refresh UI
+  // Poller: every 60 s — geo window check + UI refresh
   setInterval(() => {
     checkPreSlotGeo();
-    checkAndFireSlots();
     renderCurrentSlot();
     renderUpcoming();
+    // Also poll server in case a push was missed
+    loadTodayData();
   }, 60_000);
 }
 
