@@ -73,6 +73,7 @@
       transition: background 0.25s;
     }
 
+    #location-banner.idle    { background: #F4F4F4; }
     #location-banner.active  { background: #EAF4EE; }
     #location-banner.pending { background: #FFFBEB; }
     #location-banner.denied  { background: #FEF2F2; }
@@ -333,9 +334,9 @@
   </header>
 
   <!-- Location banner -->
-  <div id="location-banner" class="pending">
-    <span id="loc-icon">🟡</span>
-    <span id="loc-text">Requesting location…</span>
+  <div id="location-banner" class="idle">
+    <span id="loc-icon">⚪</span>
+    <span id="loc-text">Location checked 2 min before each slot</span>
   </div>
 
   <!-- Notification permission prompt -->
@@ -399,8 +400,8 @@ const MEMBERS = [
 // STATE
 // ════════════════════════════════════════════════
 
-let locStatus = 'pending'; // 'pending' | 'active' | 'denied'
-let locData   = null;      // { lat, lng, distance }
+let locStatus = 'idle'; // 'idle' | 'pending' | 'active' | 'denied'
+let locData   = null;  // { lat, lng, distance }
 let modalSlot   = null;
 let modalAction = null;
 
@@ -430,9 +431,12 @@ const todayISO = () => {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 };
 
-const logKey   = () => `lameesLog_${todayISO()}`;
-const firedKey = () => `lameesSlotsFired_${todayISO()}`;
-const LOC_CACHE_KEY = 'lameesLocCache';
+const logKey      = () => `lameesLog_${todayISO()}`;
+const firedKey    = () => `lameesSlotsFired_${todayISO()}`;
+const geoKey      = () => `lameesGeoChecked_${todayISO()}`;
+
+// Convert HHMM integer to minutes since midnight for safe arithmetic.
+const hhmmToMins = v => Math.floor(v / 100) * 60 + (v % 100);
 
 // ════════════════════════════════════════════════
 // GEOLOCATION
@@ -455,7 +459,6 @@ function onLocSuccess(pos) {
   ));
   locData   = { lat: pos.coords.latitude, lng: pos.coords.longitude, distance: dist };
   locStatus = 'active';
-  sessionStorage.setItem(LOC_CACHE_KEY, JSON.stringify({ ...locData, ts: Date.now() }));
   renderLocationBanner();
   renderCurrentSlot();
   renderUpcoming();
@@ -470,12 +473,43 @@ function onLocError() {
 }
 
 function requestLocation() {
+  locStatus = 'pending';
+  renderLocationBanner();
   if (!navigator.geolocation) { onLocError(); return; }
   navigator.geolocation.getCurrentPosition(onLocSuccess, onLocError, {
     enableHighAccuracy: true,
     timeout: 15000,
-    maximumAge: 300000,
+    maximumAge: 0, // always fresh — only called 2 min before a slot
   });
+}
+
+// Track which slots have already had their pre-slot geo check triggered.
+function getGeoCheckedSlots() {
+  const raw = sessionStorage.getItem(geoKey());
+  return raw ? JSON.parse(raw) : [];
+}
+
+function markGeoChecked(slotHHMM) {
+  const checked = getGeoCheckedSlots();
+  if (!checked.includes(slotHHMM)) {
+    checked.push(slotHHMM);
+    sessionStorage.setItem(geoKey(), JSON.stringify(checked));
+  }
+}
+
+// Called on init and every 60 s: if we're within the 2-minute pre-slot window
+// for a slot that hasn't been geo-checked yet, fire a location request.
+function checkPreSlotGeo() {
+  const nowMins = hhmmToMins(getHHMM());
+  const checked = getGeoCheckedSlots();
+  for (const slot of SLOTS) {
+    const slotMins = hhmmToMins(slot);
+    if (nowMins >= slotMins - 2 && nowMins < slotMins && !checked.includes(slot)) {
+      markGeoChecked(slot);
+      requestLocation();
+      break;
+    }
+  }
 }
 
 function renderLocationBanner() {
@@ -488,10 +522,13 @@ function renderLocationBanner() {
     text.textContent = `Location active — ${locData.distance}m from Lamees's address`;
   } else if (locStatus === 'pending') {
     icon.textContent = '🟡';
-    text.textContent = 'Requesting location…';
-  } else {
+    text.textContent = 'Checking location…';
+  } else if (locStatus === 'denied') {
     icon.textContent = '🔴';
-    text.textContent = 'Location denied — members with location requirement will not be notified';
+    text.textContent = 'Location denied — Abdullah, Melis and Seher will not be notified';
+  } else {
+    icon.textContent = '⚪';
+    text.textContent = 'Location checked 2 min before each slot (Abdullah, Melis, Seher)';
   }
 }
 
@@ -515,7 +552,8 @@ function getMemberSlotStatus(member, slotHHMM, log, firedSlots) {
   if (entry) return { type: 'claimed', entry };
   if (slotHHMM < member.wStart || slotHHMM >= member.wEnd) return { type: 'outside' };
   if (member.locRequired) {
-    if (locStatus !== 'active' || !locData || locData.distance > LAMEES.radius) {
+    if (locStatus === 'idle' || locStatus === 'pending') return { type: 'geo-pending' };
+    if (locStatus === 'denied' || !locData || locData.distance > LAMEES.radius) {
       return { type: 'away' };
     }
   }
@@ -533,6 +571,8 @@ function memberStatusHTML(s) {
       return `<span class="member-status">✅ ${s.entry.respondentName}</span>`;
     case 'outside':
       return `<span class="member-status">🌙 Outside hours</span>`;
+    case 'geo-pending':
+      return `<span class="member-status">📍 Geo check at −2 min</span>`;
     case 'away':
       return `<span class="member-status">📍 Not nearby</span>`;
     case 'notified':
@@ -765,10 +805,13 @@ function renderUpcoming() {
   }
 
   body.innerHTML = slots.map(slotHHMM => {
-    const eligible = MEMBERS.filter(m => isMemberEligible(m, slotHHMM));
-    const who = eligible.length > 0
-      ? eligible.map(m => m.name.split(' ').pop()).join(', ')
-      : 'None eligible';
+    const inWindow = MEMBERS.filter(m => slotHHMM >= m.wStart && slotHHMM < m.wEnd);
+    const who = inWindow.length > 0
+      ? inWindow.map(m => {
+          const last = m.name.split(' ').pop();
+          return m.locRequired ? `📍${last}` : last;
+        }).join(', ')
+      : 'None in window';
     return `<div class="slot-row">
       <div class="slot-time">${fmtHHMM(slotHHMM)}</div>
       <div class="slot-who">${who}</div>
@@ -831,29 +874,21 @@ function init() {
   // Notifications
   updateNotifPrompt();
 
-  // Location — restore session cache first, then refresh
-  const cached = sessionStorage.getItem(LOC_CACHE_KEY);
-  if (cached) {
-    const c = JSON.parse(cached);
-    if (Date.now() - c.ts < 10 * 60 * 1000) {
-      locData   = { lat: c.lat, lng: c.lng, distance: c.distance };
-      locStatus = 'active';
-      renderLocationBanner();
-    }
-  }
-  requestLocation();
-  setInterval(requestLocation, 10 * 60 * 1000);
-
   // Slots: silently mark past slots, then start polling
   catchUpSlots();
 
+  // Geo: check if we're already inside a 2-minute pre-slot window on load
+  checkPreSlotGeo();
+
   // Initial render
+  renderLocationBanner();
   renderCurrentSlot();
   renderUpcoming();
   renderLog();
 
-  // Poller: every 60 s, check for new slot crossings + refresh UI
+  // Poller: every 60 s — check geo window, fire slots, refresh UI
   setInterval(() => {
+    checkPreSlotGeo();
     checkAndFireSlots();
     renderCurrentSlot();
     renderUpcoming();
