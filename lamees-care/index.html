@@ -805,13 +805,10 @@ function renderUpcoming() {
   }
 
   body.innerHTML = slots.map(slotHHMM => {
-    const inWindow = MEMBERS.filter(m => slotHHMM >= m.wStart && slotHHMM < m.wEnd);
-    const who = inWindow.length > 0
-      ? inWindow.map(m => {
-          const last = m.name.split(' ').pop();
-          return m.locRequired ? `📍${last}` : last;
-        }).join(', ')
-      : 'None in window';
+    const eligible = MEMBERS.filter(m => isMemberEligible(m, slotHHMM));
+    const who = eligible.length > 0
+      ? eligible.map(m => m.name.split(' ').pop()).join(', ')
+      : 'None eligible';
     return `<div class="slot-row">
       <div class="slot-time">${fmtHHMM(slotHHMM)}</div>
       <div class="slot-who">${who}</div>
