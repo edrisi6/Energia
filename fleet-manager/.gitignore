@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Environment files (NEVER commit real secrets/PINs)
+.env
+*/.env
+
+# Local SQLite database files
+**/data/*.sqlite
+**/data/*.sqlite-journal
+backend/data/
+
+# Logs
+*.log
+
+# OS junk
+.DS_Store
