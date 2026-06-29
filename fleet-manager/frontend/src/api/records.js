@@ -19,4 +19,5 @@ export const recordsApi = {
   value: (vehicleId) => api.get(`/vehicles/${vehicleId}/value`),
   serviceStatus: (vehicleId) =>
     api.get(`/vehicles/${vehicleId}/service-status`),
+  tyreStatus: (vehicleId) => api.get(`/vehicles/${vehicleId}/tyre-status`),
 };

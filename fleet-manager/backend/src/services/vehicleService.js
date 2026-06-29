@@ -39,6 +39,11 @@ function cleanVehicleInput(body = {}) {
       'Fuel consumption',
       { min: 0 }
     ),
+    manufacturer_l_per_100km: optionalNumber(
+      body.manufacturer_l_per_100km,
+      'Manufacturer fuel consumption',
+      { min: 0 }
+    ),
     depreciation_rate: optionalNumber(
       body.depreciation_rate,
       'Depreciation rate',

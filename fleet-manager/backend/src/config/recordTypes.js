@@ -93,6 +93,21 @@ const RECORD_TYPES = {
     ],
   },
 
+  // Tyre sets. Logging a new set records the odometer when fitted and the
+  // manufacturer's rated lifespan, which drives the "tyres due?" calculation.
+  tyre: {
+    table: 'tyre_records',
+    writeRoles: ALL,
+    fields: [
+      { name: 'fitted_date', kind: 'date', label: 'Fitted date' },
+      { name: 'brand', kind: 'string', label: 'Brand' },
+      { name: 'tyre_type', kind: 'string', label: 'Type / size' },
+      { name: 'rated_lifespan_km', kind: 'number', label: 'Rated lifespan (km)', min: 0 },
+      { name: 'fitted_odometer_km', kind: 'number', label: 'Odometer when fitted (km)', min: 0 },
+      { name: 'notes', kind: 'string', label: 'Notes', maxLen: 2000 },
+    ],
+  },
+
   // Service rules drive the "is a service due?" engine. A vehicle can have
   // several; a service is due if ANY rule is met. Owners/managers only.
   serviceRule: {

@@ -41,6 +41,7 @@ router.get('/history', recordController.history);
 // Phase 4 "smart" read-only endpoints.
 router.get('/value', recordController.value);
 router.get('/service-status', recordController.serviceStatus);
+router.get('/tyre-status', recordController.tyreStatus);
 
 // Read records (any authenticated role).
 router.get('/records/:type', recordController.list);

@@ -155,6 +155,25 @@ export const RECORD_TYPES = {
     }),
   },
 
+  // Tyre sets (drive the "tyres due?" engine).
+  tyre: {
+    label: 'Tyre set',
+    writeRoles: ALL,
+    fields: [
+      { name: 'fitted_date', label: 'Fitted date', type: 'date' },
+      { name: 'brand', label: 'Brand', type: 'text' },
+      { name: 'tyre_type', label: 'Type / size', type: 'text' },
+      { name: 'rated_lifespan_km', label: 'Rated lifespan (km)', type: 'number' },
+      { name: 'fitted_odometer_km', label: 'Odometer when fitted (km)', type: 'number' },
+      { name: 'notes', label: 'Notes', type: 'textarea' },
+    ],
+    summary: (r) => ({
+      title: [r.brand, r.tyre_type].filter(Boolean).join(' ') || 'Tyre set',
+      subtitle: `Fitted ${date(r.fitted_date)} at ${dash(r.fitted_odometer_km)} km · rated ${dash(r.rated_lifespan_km)} km`,
+      right: '',
+    }),
+  },
+
   // Service interval rules (drive the "service due?" engine).
   serviceRule: {
     label: 'Service rule',

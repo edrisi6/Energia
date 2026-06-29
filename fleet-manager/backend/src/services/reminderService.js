@@ -14,6 +14,7 @@
 // ─────────────────────────────────────────────────────────────
 const db = require('../db');
 const serviceDueService = require('./serviceDueService');
+const tyreService = require('./tyreService');
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -23,6 +24,7 @@ const TYPE_LABELS = {
   insurance: 'Insurance renewal',
   roadworthy: 'Roadworthy inspection',
   service: 'Service due',
+  tyre: 'Tyre replacement',
 };
 
 // Whole days from today (date-only) until `dueDate`. Negative = in the past.
@@ -105,6 +107,18 @@ async function computeForVehicle(vehicle) {
       .orderBy('next_due_date', 'desc')
       .first();
     if (next?.next_due_date) out.push(makeReminder(vehicle, 'service', next.next_due_date));
+  }
+
+  // Tyres: km-based, so when they're worn out we flag a reminder dated today.
+  const tyres = await tyreService.computeTyreStatus(vehicle.id);
+  if (tyres.hasTyres && tyres.canCompute && tyres.due) {
+    const r = makeReminder(vehicle, 'tyre', new Date().toISOString().slice(0, 10));
+    r.status = 'due';
+    r.days_until = 0;
+    r.reasons = [
+      `Driven ${tyres.kmUsed} km on tyres rated for ${tyres.ratedLifespanKm} km`,
+    ];
+    out.push(r);
   }
 
   return out;

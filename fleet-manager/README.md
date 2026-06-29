@@ -4,7 +4,7 @@ A self-hostable, installable mobile web app (PWA) for managing a company
 vehicle fleet — registration, insurance, roadworthiness, maintenance, repairs,
 fuel, reminders and depreciation.
 
-This project is built in numbered phases. **Current status: Phase 6 complete — the app is finished and deployable.**
+This project is built in numbered phases. **Current status: Phase 7 complete.**
 
 ---
 
@@ -32,6 +32,29 @@ This local setup uses a built-in lightweight database (no password) and port
 
 > This is for trying it out only. To host it for real (your own domain + HTTPS),
 > see the **[Server Setup Guide](DEPLOYMENT.md)**.
+
+---
+
+## Phase 7 — Photos, manufacturer specs & tyres (done)
+
+- **Vehicle photos/documents.** When adding or editing a vehicle you can upload
+  three files — **Rego**, **VIN plate**, and a **compliance document**
+  (insurance certificate / roadworthiness / test report). Images and PDFs up to
+  10 MB. Files are stored privately and only viewable by logged-in users (via
+  the **Documents** tab). Uploads persist in a Docker volume.
+- **Manufacturer fuel consumption.** A dedicated field for the factory-rated
+  L/100km, separate from the measured "actual" figure. If no actual figure is
+  recorded yet, the fuel→km estimate falls back to the manufacturer's number.
+- **Tyres.** Record a tyre set (brand, type/size, manufacturer's rated km, and
+  the odometer when fitted). The **Tyres** tab shows a wear bar and flags when
+  they're due for replacement, and tyre-replacement alerts appear on the
+  dashboard alongside services.
+- **Future-ready:** fuel logs now carry a `source` field, so a later automated
+  feed from a petrol-station e-payment system can be added without schema
+  changes.
+
+New endpoints: `GET /api/vehicles/:id/tyre-status` and the document routes
+`GET/POST/DELETE /api/vehicles/:id/documents` (+ `/:docId/file`).
 
 ---
 

@@ -46,9 +46,13 @@ services:
       MAX_FAILED_ATTEMPTS: ${MAX_FAILED_ATTEMPTS:-5}
       LOCKOUT_MINUTES: ${LOCKOUT_MINUTES:-15}
       CORS_ORIGIN: ${APP_ORIGIN:-*}
+      UPLOADS_DIR: /data/uploads
       OWNER_NAME: ${OWNER_NAME}
       OWNER_USERNAME: ${OWNER_USERNAME}
       OWNER_PIN: ${OWNER_PIN}
+    volumes:
+      # Persist uploaded vehicle documents/photos across restarts.
+      - uploads:/data/uploads
     expose:
       - '4000'
 
@@ -70,5 +74,6 @@ services:
 
 volumes:
   db-data:
+  uploads:
   caddy-data:
   caddy-config:

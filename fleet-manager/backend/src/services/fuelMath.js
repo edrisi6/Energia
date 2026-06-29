@@ -25,7 +25,11 @@ function deriveFuelEstimates(fuelRow, vehicle) {
 
   const amount = Number(out.amount_spent);
   const price = Number(out.price_per_litre);
-  const consumption = Number(vehicle?.fuel_consumption_l_per_100km);
+  // Prefer the measured "actual" consumption; fall back to the manufacturer's
+  // rated figure if no actual value has been recorded yet.
+  const consumption =
+    Number(vehicle?.fuel_consumption_l_per_100km) ||
+    Number(vehicle?.manufacturer_l_per_100km);
 
   // 1) litres from money, if litres wasn't given.
   if (

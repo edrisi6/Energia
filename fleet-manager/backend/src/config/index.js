@@ -49,6 +49,13 @@ const config = {
     },
   },
 
+  // Where uploaded vehicle documents/photos are stored on disk. In Docker this
+  // points at a mounted volume so files persist across restarts.
+  uploads: {
+    dir: path.resolve(__dirname, '../../', env('UPLOADS_DIR', './data/uploads')),
+    maxBytes: intEnv('UPLOAD_MAX_BYTES', 10 * 1024 * 1024), // 10 MB
+  },
+
   auth: {
     jwtSecret: env('JWT_SECRET', ''),
     jwtExpiresIn: env('JWT_EXPIRES_IN', '12h'),

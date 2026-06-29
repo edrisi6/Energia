@@ -17,14 +17,18 @@ import RecordSection from '../components/RecordSection';
 import HistoryTimeline from '../components/HistoryTimeline';
 import ValueTab from '../components/ValueTab';
 import MaintenanceTab from '../components/MaintenanceTab';
+import TyresTab from '../components/TyresTab';
+import VehicleDocuments from '../components/VehicleDocuments';
 
 const TABS = [
   'Overview',
+  'Documents',
   'History log',
   'Registration',
   'Insurance',
   'Roadworthy',
   'Maintenance',
+  'Tyres',
   'Repairs',
   'Fuel',
   'Value',
@@ -61,10 +65,18 @@ function Overview({ v }) {
       <Row label="VIN" value={dash(v.vin)} />
       <Row label="Odometer" value={km(v.current_odometer_km)} />
       <Row
-        label="Fuel consumption"
+        label="Fuel consumption (actual)"
         value={
           v.fuel_consumption_l_per_100km
             ? `${v.fuel_consumption_l_per_100km} L/100km`
+            : '—'
+        }
+      />
+      <Row
+        label="Fuel consumption (manufacturer)"
+        value={
+          v.manufacturer_l_per_100km
+            ? `${v.manufacturer_l_per_100km} L/100km`
             : '—'
         }
       />
@@ -156,9 +168,11 @@ export default function VehicleDetail() {
       {/* Tab content */}
       {tab === 'Overview' && <Overview v={vehicle} />}
       {tab === 'History log' && <HistoryTimeline vehicleId={id} />}
+      {tab === 'Documents' && <VehicleDocuments vehicleId={id} />}
       {tab === 'Maintenance' && (
         <MaintenanceTab vehicleId={id} vehicleLabel={vehicleLabel} />
       )}
+      {tab === 'Tyres' && <TyresTab vehicleId={id} vehicleLabel={vehicleLabel} />}
       {tab === 'Value' && <ValueTab vehicleId={id} />}
       {TAB_RECORD_TYPE[tab] && (
         <RecordSection

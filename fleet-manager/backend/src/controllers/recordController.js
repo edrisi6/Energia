@@ -5,6 +5,7 @@
 const recordService = require('../services/recordService');
 const valueService = require('../services/valueService');
 const serviceDueService = require('../services/serviceDueService');
+const tyreService = require('../services/tyreService');
 
 async function list(req, res, next) {
   try {
@@ -77,6 +78,16 @@ async function serviceStatus(req, res, next) {
   }
 }
 
+// "Are the tyres due?" status for the Tyres tab.
+async function tyreStatus(req, res, next) {
+  try {
+    const data = await tyreService.computeTyreStatus(req.params.vehicleId);
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   list,
   create,
@@ -85,4 +96,5 @@ module.exports = {
   history,
   value,
   serviceStatus,
+  tyreStatus,
 };

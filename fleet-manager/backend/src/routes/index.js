@@ -6,6 +6,7 @@ const express = require('express');
 const authRoutes = require('./auth');
 const vehicleRoutes = require('./vehicles');
 const recordRoutes = require('./records');
+const documentRoutes = require('./documents');
 const userRoutes = require('./users');
 const reminderRoutes = require('./reminders');
 const calendarRoutes = require('./calendar');
@@ -22,6 +23,7 @@ router.use('/calendar', calendarRoutes);
 router.use('/vehicles', vehicleRoutes);
 // Records + history live under a specific vehicle.
 router.use('/vehicles/:vehicleId', recordRoutes);
+router.use('/vehicles/:vehicleId/documents', documentRoutes);
 
 // Small demo endpoint to prove role-based access control works end to end.
 // Only owners and managers may reach it; a service_operator gets 403.
