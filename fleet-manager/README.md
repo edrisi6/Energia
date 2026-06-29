@@ -8,6 +8,33 @@ This project is built in numbered phases. **Current status: Phase 6 complete —
 
 ---
 
+## 🚀 Try it on your own computer (one step)
+
+Just want to see it running locally? You only need **Docker Desktop** installed
+and running. No config, no `.env`, nothing to edit.
+
+**Mac:** double-click **`start-local.command`** in this folder. It builds the
+app, waits for it to be ready, and opens it in your browser. (First time, if
+macOS blocks it: right-click the file → **Open** → **Open**.)
+
+**Any system (one command):** open a terminal in this `fleet-manager` folder and
+run:
+
+```bash
+docker compose -f docker-compose.local.yml up -d --build
+```
+
+Then open **http://localhost:8080** and log in with **`owner` / `123456`**.
+
+This local setup uses a built-in lightweight database (no password) and port
+8080 (so it won't clash with anything on port 80). To stop it:
+`docker compose -f docker-compose.local.yml down`.
+
+> This is for trying it out only. To host it for real (your own domain + HTTPS),
+> see the **[Server Setup Guide](DEPLOYMENT.md)**.
+
+---
+
 ## Phase 6 — Polish & deploy (done)
 
 - **Installable app (PWA).** The frontend is now an installable Progressive Web

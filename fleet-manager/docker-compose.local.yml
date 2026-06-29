@@ -1,0 +1,49 @@
+# ─────────────────────────────────────────────────────────────
+# ZERO-CONFIG LOCAL TRIAL — for trying the app on your own computer.
+#
+#   docker compose -f docker-compose.local.yml up -d --build
+#   then open http://localhost:8080  (login: owner / 123456)
+#
+# Everything is pre-filled with safe LOCAL-ONLY values, so there is no .env to
+# create and nothing to edit:
+#   - Uses a lightweight built-in database (SQLite) — no password needed.
+#   - Serves on port 8080, so it won't clash with anything on port 80.
+#   - Data is kept in a Docker volume between restarts.
+#
+# ⚠️  Do NOT use this file for a real public server — the secret below is
+#     public. For production use docker-compose.yml with your own .env
+#     (see DEPLOYMENT.md).
+# ─────────────────────────────────────────────────────────────
+services:
+  api:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DB_CLIENT: sqlite
+      SQLITE_FILE: /data/fleet.sqlite
+      # Local-only signing secret (fine for a trial; not for production).
+      JWT_SECRET: local-trial-secret-not-for-production-0123456789abcdef
+      JWT_EXPIRES_IN: 12h
+      CORS_ORIGIN: '*'
+      OWNER_NAME: Fleet Owner
+      OWNER_USERNAME: owner
+      OWNER_PIN: '123456'
+    volumes:
+      - fleet-data:/data
+    expose:
+      - '4000'
+
+  web:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      # ':80' = plain HTTP inside the container (no certificate needed locally).
+      DOMAIN: ':80'
+    ports:
+      - '8080:80'
+
+volumes:
+  fleet-data:
