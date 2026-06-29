@@ -35,6 +35,66 @@ This local setup uses a built-in lightweight database (no password) and port
 
 ---
 
+## 🔄 Getting the latest changes (auto-update)
+
+A **ZIP download can't update itself** — to pull new changes you must get the
+code with **`git`** once. Then updating is a single click.
+
+**One-time switch to git** (replaces your ZIP folder). In a terminal:
+
+```bash
+# Pick a folder to keep the project in, then:
+git clone --branch claude/vehicle-fleet-manager-c2l647 \
+  https://github.com/edrisi6/Energia.git fleet-manager-app
+cd fleet-manager-app/fleet-manager
+```
+
+**From then on, to get the newest version:**
+
+- **Mac:** double-click **`update-local.command`** — it pulls the latest code
+  and rebuilds. (First time: right-click → **Open** → **Open**.)
+- **Any system:**
+  ```bash
+  git pull
+  docker compose -f docker-compose.local.yml up -d --build
+  ```
+
+> Running on a server, or have Docker Hub building from GitHub? Those can update
+> automatically on every push — tell me your setup and I'll wire it up.
+
+---
+
+## 📦 Moving this app to its own repository
+
+This app currently lives in the `fleet-manager/` folder of the **Energia** repo
+(which is an unrelated project). To give it a clean, dedicated home:
+
+1. On GitHub, create a **new empty repository** (e.g. `fleet-manager`) — no
+   README, no `.gitignore`.
+2. On your computer, run (replace `YOUR-USER` with your GitHub username):
+
+   ```bash
+   # Get just this app's files (a fresh copy, no Energia history)
+   git clone --branch claude/vehicle-fleet-manager-c2l647 --depth 1 \
+     https://github.com/edrisi6/Energia.git _tmp
+   cp -R _tmp/fleet-manager fleet-manager && rm -rf _tmp
+
+   # Make it its own repo and push to the new home
+   cd fleet-manager
+   git init -b main
+   git add .
+   git commit -m "Vehicle Fleet Manager"
+   git remote add origin https://github.com/YOUR-USER/fleet-manager.git
+   git push -u origin main
+   ```
+
+After this, the app is a standalone repo on `main`, and updates are a plain
+`git pull`. (I can't create or push that new repo from here — my access is
+limited to the Energia repo — but the steps above do it from your machine in a
+couple of minutes.)
+
+---
+
 ## Phase 8 — Camera capture & photo scanning (done)
 
 Adding a vehicle's photos is now faster, and the app can read details off them:
