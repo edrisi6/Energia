@@ -24,8 +24,13 @@ This project is built in numbered phases. **Current status: Phase 6 complete —
 
 ### Deploy on your own server (production)
 
-You need a server with **Docker** installed and (for HTTPS) a **domain name**
-pointing at it.
+> 📘 **Starting from a brand-new, empty server?** Follow the complete
+> step-by-step **[Server Setup Guide](DEPLOYMENT.md)** — it assumes nothing is
+> installed and covers getting a server, pointing your domain, installing
+> Docker, deploying, installing on phones, and backups.
+
+The short version (for a server that already has **Docker** and a **domain**
+pointing at it):
 
 ```bash
 cd fleet-manager
