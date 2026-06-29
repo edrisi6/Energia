@@ -38,6 +38,10 @@ function requireRecordWrite(req, res, next) {
 // Merged history timeline for the vehicle.
 router.get('/history', recordController.history);
 
+// Phase 4 "smart" read-only endpoints.
+router.get('/value', recordController.value);
+router.get('/service-status', recordController.serviceStatus);
+
 // Read records (any authenticated role).
 router.get('/records/:type', recordController.list);
 

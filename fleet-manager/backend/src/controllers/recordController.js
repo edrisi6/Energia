@@ -3,6 +3,8 @@
 // (:type), so one controller serves all six types.
 // ─────────────────────────────────────────────────────────────
 const recordService = require('../services/recordService');
+const valueService = require('../services/valueService');
+const serviceDueService = require('../services/serviceDueService');
 
 async function list(req, res, next) {
   try {
@@ -53,4 +55,34 @@ async function history(req, res, next) {
   }
 }
 
-module.exports = { list, create, update, remove, history };
+// Depreciation / value details + chart series for the Value tab.
+async function value(req, res, next) {
+  try {
+    const data = await valueService.computeValue(req.params.vehicleId);
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// "Is a service due?" status for the Maintenance tab.
+async function serviceStatus(req, res, next) {
+  try {
+    const data = await serviceDueService.computeServiceStatus(
+      req.params.vehicleId
+    );
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = {
+  list,
+  create,
+  update,
+  remove,
+  history,
+  value,
+  serviceStatus,
+};

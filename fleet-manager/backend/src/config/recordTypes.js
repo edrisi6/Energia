@@ -92,6 +92,18 @@ const RECORD_TYPES = {
       { name: 'driver_user_id', kind: 'fk', label: 'Driver' },
     ],
   },
+
+  // Service rules drive the "is a service due?" engine. A vehicle can have
+  // several; a service is due if ANY rule is met. Owners/managers only.
+  serviceRule: {
+    table: 'service_rules',
+    writeRoles: MGMT_ONLY,
+    fields: [
+      { name: 'interval_km', kind: 'number', label: 'Every (km)', min: 0 },
+      { name: 'interval_months', kind: 'number', label: 'Every (months)', min: 0 },
+      { name: 'use_fuel_estimate', kind: 'bool', label: 'Use fuel-based km estimate' },
+    ],
+  },
 };
 
 module.exports = { RECORD_TYPES };

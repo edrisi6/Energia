@@ -9,6 +9,7 @@
 const db = require('../db');
 const { RECORD_TYPES } = require('../config/recordTypes');
 const vehicleService = require('./vehicleService');
+const { deriveFuelEstimates } = require('./fuelMath');
 const {
   ValidationError,
   requireString,
@@ -74,9 +75,12 @@ async function getOne(type, vehicleId, id) {
 
 async function create(type, vehicleId, body) {
   const cfg = getConfig(type);
-  await vehicleService.getById(vehicleId); // ensure the vehicle exists
-  const data = cleanRecord(type, body);
+  const vehicle = await vehicleService.getById(vehicleId); // ensure it exists
+  let data = cleanRecord(type, body);
   data.vehicle_id = Number(vehicleId);
+
+  // For fuel logs, auto-fill litres + estimated_km from the money spent.
+  if (type === 'fuel') data = deriveFuelEstimates(data, vehicle);
 
   const [row] = await db(cfg.table).insert(data).returning('*');
   if (row && typeof row === 'object') return row;
@@ -86,7 +90,13 @@ async function create(type, vehicleId, body) {
 async function update(type, vehicleId, id, body) {
   const cfg = getConfig(type);
   await getOne(type, vehicleId, id); // 404 if missing / wrong vehicle
-  const data = cleanRecord(type, body);
+  let data = cleanRecord(type, body);
+
+  if (type === 'fuel') {
+    const vehicle = await vehicleService.getById(vehicleId);
+    data = deriveFuelEstimates(data, vehicle);
+  }
+
   await db(cfg.table).where({ id, vehicle_id: vehicleId }).update(data);
   return getOne(type, vehicleId, id);
 }

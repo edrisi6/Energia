@@ -15,6 +15,8 @@ import { money, km, dash } from '../utils/format';
 import Spinner from '../components/Spinner';
 import RecordSection from '../components/RecordSection';
 import HistoryTimeline from '../components/HistoryTimeline';
+import ValueTab from '../components/ValueTab';
+import MaintenanceTab from '../components/MaintenanceTab';
 
 const TABS = [
   'Overview',
@@ -28,19 +30,14 @@ const TABS = [
   'Value',
 ];
 
-// Map each record tab to its backend record type.
+// Map each simple record tab to its backend record type. (Maintenance and
+// Value have richer custom tabs handled separately below.)
 const TAB_RECORD_TYPE = {
   Registration: 'registration',
   Insurance: 'insurance',
   Roadworthy: 'roadworthy',
-  Maintenance: 'maintenance',
   Repairs: 'repairs',
   Fuel: 'fuel',
-};
-
-// Tabs not yet built and the phase that fills them.
-const TAB_PHASE = {
-  Value: 'Phase 4',
 };
 
 function Row({ label, value }) {
@@ -74,15 +71,6 @@ function Overview({ v }) {
       <Row label="Purchase price" value={money(v.purchase_price)} />
       <Row label="Current value" value={money(v.current_value)} />
       <Row label="Notes" value={dash(v.notes)} />
-    </div>
-  );
-}
-
-function ComingSoon({ tab }) {
-  return (
-    <div className="card px-3 py-10 text-center text-sm text-slate-500">
-      🚧 The <span className="font-medium">{tab}</span> tab arrives in{' '}
-      {TAB_PHASE[tab] || 'a later phase'}.
     </div>
   );
 }
@@ -166,10 +154,11 @@ export default function VehicleDetail() {
       {/* Tab content */}
       {tab === 'Overview' && <Overview v={vehicle} />}
       {tab === 'History log' && <HistoryTimeline vehicleId={id} />}
+      {tab === 'Maintenance' && <MaintenanceTab vehicleId={id} />}
+      {tab === 'Value' && <ValueTab vehicleId={id} />}
       {TAB_RECORD_TYPE[tab] && (
         <RecordSection vehicleId={id} type={TAB_RECORD_TYPE[tab]} />
       )}
-      {TAB_PHASE[tab] && <ComingSoon tab={tab} />}
 
       {/* Danger zone: delete (owners/managers only) */}
       {canManage && (

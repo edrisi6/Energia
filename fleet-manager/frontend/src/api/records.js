@@ -16,4 +16,7 @@ export const recordsApi = {
     api.del(`/vehicles/${vehicleId}/records/${type}/${id}`),
   history: (vehicleId) =>
     api.get(`/vehicles/${vehicleId}/history`).then((r) => r.items),
+  value: (vehicleId) => api.get(`/vehicles/${vehicleId}/value`),
+  serviceStatus: (vehicleId) =>
+    api.get(`/vehicles/${vehicleId}/service-status`),
 };

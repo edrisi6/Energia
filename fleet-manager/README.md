@@ -4,7 +4,29 @@ A self-hostable, installable mobile web app (PWA) for managing a company
 vehicle fleet — registration, insurance, roadworthiness, maintenance, repairs,
 fuel, reminders and depreciation.
 
-This project is built in numbered phases. **Current status: Phase 3 complete.**
+This project is built in numbered phases. **Current status: Phase 4 complete.**
+
+---
+
+## Phase 4 — Smart logic (done)
+
+The app now does the thinking for you:
+
+- **Fuel money → kilometres.** Log how much you spent and the price per litre;
+  the app works out the litres and estimates the distance that fuel covers
+  (`litres = amount / price`, `estimated_km = litres × 100 / consumption`). It
+  only fills in values you didn't type, so exact figures are never overwritten.
+- **"Service due?" engine.** Set service rules per vehicle (every X km, every
+  X months, and/or counting fuel-estimated km). The Maintenance tab shows a
+  clear red/green banner and explains exactly which rule triggered.
+- **Depreciation + Value chart.** Current value is computed as
+  `purchase_price × (1 − rate) ^ years_owned`; a manual override always wins.
+  The Value tab shows the current/purchase figures and a chart of purchase
+  value vs estimated value over time.
+
+New read-only endpoints: `GET /api/vehicles/:id/value` and
+`GET /api/vehicles/:id/service-status`. Running the app is unchanged
+(two-terminal flow from Phase 2).
 
 ---
 

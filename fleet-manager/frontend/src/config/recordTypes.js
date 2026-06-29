@@ -116,14 +116,39 @@ export const RECORD_TYPES = {
       { name: 'date', label: 'Date', type: 'date' },
       { name: 'amount_spent', label: 'Amount spent', type: 'number' },
       { name: 'price_per_litre', label: 'Price per litre', type: 'number' },
-      { name: 'litres', label: 'Litres', type: 'number' },
+      // Litres + estimated km are filled in automatically by the server, so we
+      // don't ask for them here. Estimated km is shown on the fuel list/history.
       { name: 'odometer_km', label: 'Odometer (km)', type: 'number' },
       { name: 'driver_user_id', label: 'Driver', type: 'driver' },
     ],
     summary: (r, ctx) => ({
       title: `${dash(r.litres)} L`,
-      subtitle: `${date(r.date)} · ${driverName(r.driver_user_id, ctx?.usersById)}`,
+      subtitle:
+        `${date(r.date)} · ${driverName(r.driver_user_id, ctx?.usersById)}` +
+        (r.estimated_km ? ` · ~${r.estimated_km} km` : ''),
       right: money(r.amount_spent),
+    }),
+  },
+
+  // Service interval rules (drive the "service due?" engine).
+  serviceRule: {
+    label: 'Service rule',
+    writeRoles: MGMT,
+    fields: [
+      { name: 'interval_km', label: 'Every (km)', type: 'number' },
+      { name: 'interval_months', label: 'Every (months)', type: 'number' },
+      { name: 'use_fuel_estimate', label: 'Use fuel-based km estimate', type: 'checkbox' },
+    ],
+    summary: (r) => ({
+      title:
+        [
+          r.interval_km ? `${r.interval_km} km` : null,
+          r.interval_months ? `${r.interval_months} mo` : null,
+        ]
+          .filter(Boolean)
+          .join(' / ') || 'Rule',
+      subtitle: r.use_fuel_estimate ? 'Counts fuel-estimated km' : 'Odometer & time',
+      right: '',
     }),
   },
 };
