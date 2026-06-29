@@ -1,6 +1,10 @@
 # Dependencies
 node_modules/
 
+# Frontend build output
+dist/
+*/dist/
+
 # Environment files (NEVER commit real secrets/PINs)
 .env
 */.env

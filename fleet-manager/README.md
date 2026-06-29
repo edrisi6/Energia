@@ -4,7 +4,48 @@ A self-hostable, installable mobile web app (PWA) for managing a company
 vehicle fleet — registration, insurance, roadworthiness, maintenance, repairs,
 fuel, reminders and depreciation.
 
-This project is built in numbered phases. **Current status: Phase 1 complete.**
+This project is built in numbered phases. **Current status: Phase 2 complete.**
+
+---
+
+## Phase 2 — Vehicles + the visual app (done)
+
+Phase 2 adds the first thing you can actually open and click:
+
+- **Vehicles API** (backend): list, view, create, edit, delete — with role
+  rules enforced on the server (Owners/Managers can change vehicles; Service
+  Operators can only view).
+- **React PWA frontend** (`frontend/`) built with Vite + Tailwind:
+  - **PIN keypad login screen**.
+  - **Dashboard** with a fleet summary (vehicle count + total value) and an
+    "Attention needed" area (filled by the reminders engine in Phase 5).
+  - **Vehicle list** → **Vehicle detail** with the full tab shell
+    (Overview · History log · Registration · Insurance · Roadworthy ·
+    Maintenance · Repairs · Fuel · Value). Overview is live; the other tabs
+    are labelled with the phase that fills them.
+  - **Add / Edit vehicle** form and a guarded **delete**.
+
+### How to run the whole app (Phase 2)
+
+You need **two terminals** — one for the backend, one for the frontend.
+
+```bash
+# Terminal 1 — backend API
+cd fleet-manager/backend
+npm install            # first time only
+cp .env.example .env   # first time only; set JWT_SECRET + OWNER_PIN
+npm run setup          # first time only; creates DB + owner
+npm run dev            # leave running -> http://localhost:4000
+
+# Terminal 2 — frontend app
+cd fleet-manager/frontend
+npm install            # first time only
+npm run dev            # leave running -> http://localhost:5173
+```
+
+Then open **http://localhost:5173** in your browser and log in with the
+username + PIN from your `.env` (defaults: `owner` / the PIN you set).
+The frontend automatically talks to the backend — no extra setup.
 
 ---
 
