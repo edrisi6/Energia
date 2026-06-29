@@ -1,0 +1,56 @@
+// ─────────────────────────────────────────────────────────────
+// HTTP layer for vehicle records. The record type comes from the URL
+// (:type), so one controller serves all six types.
+// ─────────────────────────────────────────────────────────────
+const recordService = require('../services/recordService');
+
+async function list(req, res, next) {
+  try {
+    const { vehicleId, type } = req.params;
+    const records = await recordService.listByVehicle(type, vehicleId);
+    res.json({ records });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function create(req, res, next) {
+  try {
+    const { vehicleId, type } = req.params;
+    const record = await recordService.create(type, vehicleId, req.body);
+    res.status(201).json({ record });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function update(req, res, next) {
+  try {
+    const { vehicleId, type, id } = req.params;
+    const record = await recordService.update(type, vehicleId, id, req.body);
+    res.json({ record });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function remove(req, res, next) {
+  try {
+    const { vehicleId, type, id } = req.params;
+    await recordService.remove(type, vehicleId, id);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function history(req, res, next) {
+  try {
+    const items = await recordService.history(req.params.vehicleId);
+    res.json({ items });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { list, create, update, remove, history };

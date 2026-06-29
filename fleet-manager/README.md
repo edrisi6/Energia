@@ -4,7 +4,26 @@ A self-hostable, installable mobile web app (PWA) for managing a company
 vehicle fleet — registration, insurance, roadworthiness, maintenance, repairs,
 fuel, reminders and depreciation.
 
-This project is built in numbered phases. **Current status: Phase 2 complete.**
+This project is built in numbered phases. **Current status: Phase 3 complete.**
+
+---
+
+## Phase 3 — Records + history timeline (done)
+
+Every tab on the vehicle page is now real:
+
+- **Registration, Insurance, Roadworthy** records — add/edit/delete
+  (Owners & Managers only).
+- **Maintenance, Repairs, Fuel** logs — add/edit/delete (Service Operators
+  can do these too, since they do the work). Repairs and Fuel include a
+  **driver** dropdown.
+- **History log** tab: maintenance + repairs + fuel merged into one
+  date-sorted timeline per vehicle.
+
+Under the hood, a single generic record engine (backend + frontend) drives all
+six record types from one config file, so the code stays small and consistent.
+Role rules are enforced on the server for every record type, not just hidden in
+the UI. Running the app is the same two-terminal flow as Phase 2.
 
 ---
 

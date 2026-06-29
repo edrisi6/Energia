@@ -13,6 +13,8 @@ import { vehiclesApi } from '../api/vehicles';
 import { useAuth } from '../context/AuthContext';
 import { money, km, dash } from '../utils/format';
 import Spinner from '../components/Spinner';
+import RecordSection from '../components/RecordSection';
+import HistoryTimeline from '../components/HistoryTimeline';
 
 const TABS = [
   'Overview',
@@ -26,15 +28,18 @@ const TABS = [
   'Value',
 ];
 
-// Which phase each not-yet-built tab arrives in (shown to the user).
+// Map each record tab to its backend record type.
+const TAB_RECORD_TYPE = {
+  Registration: 'registration',
+  Insurance: 'insurance',
+  Roadworthy: 'roadworthy',
+  Maintenance: 'maintenance',
+  Repairs: 'repairs',
+  Fuel: 'fuel',
+};
+
+// Tabs not yet built and the phase that fills them.
 const TAB_PHASE = {
-  'History log': 'Phase 3',
-  Registration: 'Phase 3',
-  Insurance: 'Phase 3',
-  Roadworthy: 'Phase 3',
-  Maintenance: 'Phase 3',
-  Repairs: 'Phase 3',
-  Fuel: 'Phase 3',
   Value: 'Phase 4',
 };
 
@@ -159,7 +164,12 @@ export default function VehicleDetail() {
       </div>
 
       {/* Tab content */}
-      {tab === 'Overview' ? <Overview v={vehicle} /> : <ComingSoon tab={tab} />}
+      {tab === 'Overview' && <Overview v={vehicle} />}
+      {tab === 'History log' && <HistoryTimeline vehicleId={id} />}
+      {TAB_RECORD_TYPE[tab] && (
+        <RecordSection vehicleId={id} type={TAB_RECORD_TYPE[tab]} />
+      )}
+      {TAB_PHASE[tab] && <ComingSoon tab={tab} />}
 
       {/* Danger zone: delete (owners/managers only) */}
       {canManage && (

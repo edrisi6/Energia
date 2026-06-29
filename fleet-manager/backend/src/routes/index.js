@@ -5,6 +5,8 @@
 const express = require('express');
 const authRoutes = require('./auth');
 const vehicleRoutes = require('./vehicles');
+const recordRoutes = require('./records');
+const userRoutes = require('./users');
 const { requireAuth } = require('../middleware/auth');
 const { requireRole } = require('../middleware/rbac');
 const { ROLES } = require('../utils/roles');
@@ -12,7 +14,10 @@ const { ROLES } = require('../utils/roles');
 const router = express.Router();
 
 router.use('/auth', authRoutes);
+router.use('/users', userRoutes);
 router.use('/vehicles', vehicleRoutes);
+// Records + history live under a specific vehicle.
+router.use('/vehicles/:vehicleId', recordRoutes);
 
 // Small demo endpoint to prove role-based access control works end to end.
 // Only owners and managers may reach it; a service_operator gets 403.

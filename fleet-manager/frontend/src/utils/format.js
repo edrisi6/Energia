@@ -24,3 +24,15 @@ export function km(value) {
 export function dash(value) {
   return value === null || value === undefined || value === '' ? '—' : value;
 }
+
+// Format an ISO date (YYYY-MM-DD) for display. Falls back to a dash.
+export function date(value) {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
