@@ -1,0 +1,29 @@
+# ─────────────────────────────────────────────────────────────
+# Caddy serves the built frontend and reverse-proxies the API.
+#
+# - Set DOMAIN to your real domain (e.g. fleet.example.com) and Caddy will
+#   automatically obtain and renew a Let's Encrypt HTTPS certificate.
+# - If DOMAIN is left as the default ":80", it serves plain HTTP locally
+#   (handy for trying it on your own machine).
+# ─────────────────────────────────────────────────────────────
+
+{
+	# Email used for Let's Encrypt (optional but recommended in production).
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN::80} {
+	encode gzip
+
+	# API requests go to the backend container.
+	handle /api/* {
+		reverse_proxy api:4000
+	}
+
+	# Everything else is the single-page app (with SPA fallback to index.html).
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

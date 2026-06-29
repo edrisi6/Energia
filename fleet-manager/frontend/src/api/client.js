@@ -39,6 +39,14 @@ async function request(method, path, body) {
   }
 
   if (!res.ok) {
+    // If a previously-valid session has expired (401 while we held a token),
+    // clear it and send the user back to the login screen.
+    if (res.status === 401 && token) {
+      setToken(null);
+      if (window.location.pathname !== '/login') {
+        window.location.assign('/login');
+      }
+    }
     const message = (data && data.error) || `Request failed (${res.status}).`;
     const err = new Error(message);
     err.status = res.status;

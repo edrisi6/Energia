@@ -4,7 +4,82 @@ A self-hostable, installable mobile web app (PWA) for managing a company
 vehicle fleet — registration, insurance, roadworthiness, maintenance, repairs,
 fuel, reminders and depreciation.
 
-This project is built in numbered phases. **Current status: Phase 5 complete.**
+This project is built in numbered phases. **Current status: Phase 6 complete — the app is finished and deployable.**
+
+---
+
+## Phase 6 — Polish & deploy (done)
+
+- **Installable app (PWA).** The frontend is now an installable Progressive Web
+  App with its own icon, an offline app shell (service worker), and a
+  standalone display mode — staff can "Add to Home Screen" on a phone and open
+  it like a native app. (API calls are never cached, so data stays live.)
+- **Sturdier UX.** A global error boundary shows a friendly "something went
+  wrong / reload" screen instead of a blank page, and an expired session
+  automatically returns you to the login screen.
+- **One-command deploy.** `docker-compose` runs PostgreSQL, the API, and
+  **Caddy** (which serves the app and provides **automatic HTTPS**).
+- **Nightly backups.** A `scripts/backup.sh` script dumps the database on a
+  schedule and keeps the last 14 copies.
+
+### Deploy on your own server (production)
+
+You need a server with **Docker** installed and (for HTTPS) a **domain name**
+pointing at it.
+
+```bash
+cd fleet-manager
+
+# 1) Configure
+cp .env.example .env
+#    Edit .env and set, at minimum:
+#      DOMAIN       -> your domain, e.g. fleet.example.com  (for auto HTTPS)
+#      ACME_EMAIL   -> your email (for the HTTPS certificate)
+#      PGPASSWORD   -> a strong database password
+#      JWT_SECRET   -> node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+#      OWNER_PIN    -> the first owner's 6+ digit PIN
+
+# 2) Launch everything (builds images on first run)
+docker compose up -d --build
+```
+
+That's it. Visit **https://your-domain** and log in. Caddy obtains and renews
+the HTTPS certificate automatically. To try it locally first, leave
+`DOMAIN=:80` and open **http://localhost**.
+
+Useful commands:
+
+```bash
+docker compose logs -f          # watch logs
+docker compose down             # stop (data is kept in volumes)
+docker compose up -d --build    # apply an update / redeploy
+```
+
+### Install it on a phone
+
+Open the site in the phone's browser → browser menu → **Add to Home Screen**.
+It then launches full-screen with its own icon, like an app.
+
+### Nightly database backups
+
+Run the backup script (dumps the DB to `./backups`, keeps the last 14):
+
+```bash
+./scripts/backup.sh
+```
+
+Schedule it nightly with cron (`crontab -e`):
+
+```
+0 2 * * * /full/path/to/fleet-manager/scripts/backup.sh >> /var/log/fleet-backup.log 2>&1
+```
+
+To restore a backup:
+
+```bash
+gunzip -c backups/fleet-YYYYMMDD-HHMMSS.sql.gz | \
+  docker compose exec -T db psql -U fleet fleet
+```
 
 ---
 

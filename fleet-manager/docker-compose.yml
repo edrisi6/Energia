@@ -1,0 +1,75 @@
+# ─────────────────────────────────────────────────────────────
+# One-command deployment for the Vehicle Fleet Manager.
+#
+#   1. cp .env.example .env   and fill in the values
+#   2. docker compose up -d --build
+#
+# Services:
+#   db   – PostgreSQL (data persisted in a named volume)
+#   api  – Node/Express backend (runs migrations + seed on start)
+#   web  – Caddy serving the built frontend + reverse-proxying /api,
+#          with automatic HTTPS when DOMAIN is a real domain.
+# ─────────────────────────────────────────────────────────────
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PGUSER}
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+      POSTGRES_DB: ${PGDATABASE}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${PGUSER}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DB_CLIENT: postgres
+      PGHOST: db
+      PGPORT: 5432
+      PGUSER: ${PGUSER}
+      PGPASSWORD: ${PGPASSWORD}
+      PGDATABASE: ${PGDATABASE}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-12h}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
+      MAX_FAILED_ATTEMPTS: ${MAX_FAILED_ATTEMPTS:-5}
+      LOCKOUT_MINUTES: ${LOCKOUT_MINUTES:-15}
+      CORS_ORIGIN: ${APP_ORIGIN:-*}
+      OWNER_NAME: ${OWNER_NAME}
+      OWNER_USERNAME: ${OWNER_USERNAME}
+      OWNER_PIN: ${OWNER_PIN}
+    expose:
+      - '4000'
+
+  web:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      # Default ':80' serves plain HTTP locally. Set DOMAIN in .env to a real
+      # domain for automatic HTTPS.
+      DOMAIN: ${DOMAIN:-:80}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:
