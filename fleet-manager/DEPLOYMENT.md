@@ -214,10 +214,9 @@ nano .env
 edit):
 
 ```ini
-# Your domain (must point at this server from Step 2)
+# Your domain (must point at this server from Step 2).
+# Caddy obtains and renews the HTTPS certificate automatically — no email needed.
 DOMAIN=fleet.yourcompany.com
-# Your email — used to issue the HTTPS certificate
-ACME_EMAIL=you@yourcompany.com
 
 # Database — set a strong password (any long random text)
 PGUSER=fleet

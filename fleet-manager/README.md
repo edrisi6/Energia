@@ -39,7 +39,6 @@ cd fleet-manager
 cp .env.example .env
 #    Edit .env and set, at minimum:
 #      DOMAIN       -> your domain, e.g. fleet.example.com  (for auto HTTPS)
-#      ACME_EMAIL   -> your email (for the HTTPS certificate)
 #      PGPASSWORD   -> a strong database password
 #      JWT_SECRET   -> node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 #      OWNER_PIN    -> the first owner's 6+ digit PIN

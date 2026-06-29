@@ -61,7 +61,6 @@ services:
       # Default ':80' serves plain HTTP locally. Set DOMAIN in .env to a real
       # domain for automatic HTTPS.
       DOMAIN: ${DOMAIN:-:80}
-      ACME_EMAIL: ${ACME_EMAIL:-}
     ports:
       - '80:80'
       - '443:443'
