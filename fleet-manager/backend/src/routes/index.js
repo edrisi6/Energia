@@ -7,6 +7,8 @@ const authRoutes = require('./auth');
 const vehicleRoutes = require('./vehicles');
 const recordRoutes = require('./records');
 const userRoutes = require('./users');
+const reminderRoutes = require('./reminders');
+const calendarRoutes = require('./calendar');
 const { requireAuth } = require('../middleware/auth');
 const { requireRole } = require('../middleware/rbac');
 const { ROLES } = require('../utils/roles');
@@ -15,6 +17,8 @@ const router = express.Router();
 
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
+router.use('/reminders', reminderRoutes);
+router.use('/calendar', calendarRoutes);
 router.use('/vehicles', vehicleRoutes);
 // Records + history live under a specific vehicle.
 router.use('/vehicles/:vehicleId', recordRoutes);

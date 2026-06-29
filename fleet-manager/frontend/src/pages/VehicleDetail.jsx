@@ -104,6 +104,8 @@ export default function VehicleDetail() {
   if (error) return <p className="text-red-600">{error}</p>;
   if (!vehicle) return <Spinner />;
 
+  const vehicleLabel = `${vehicle.make} ${vehicle.model}`;
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -154,10 +156,16 @@ export default function VehicleDetail() {
       {/* Tab content */}
       {tab === 'Overview' && <Overview v={vehicle} />}
       {tab === 'History log' && <HistoryTimeline vehicleId={id} />}
-      {tab === 'Maintenance' && <MaintenanceTab vehicleId={id} />}
+      {tab === 'Maintenance' && (
+        <MaintenanceTab vehicleId={id} vehicleLabel={vehicleLabel} />
+      )}
       {tab === 'Value' && <ValueTab vehicleId={id} />}
       {TAB_RECORD_TYPE[tab] && (
-        <RecordSection vehicleId={id} type={TAB_RECORD_TYPE[tab]} />
+        <RecordSection
+          vehicleId={id}
+          type={TAB_RECORD_TYPE[tab]}
+          vehicleLabel={vehicleLabel}
+        />
       )}
 
       {/* Danger zone: delete (owners/managers only) */}

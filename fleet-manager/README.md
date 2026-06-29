@@ -4,7 +4,28 @@ A self-hostable, installable mobile web app (PWA) for managing a company
 vehicle fleet — registration, insurance, roadworthiness, maintenance, repairs,
 fuel, reminders and depreciation.
 
-This project is built in numbered phases. **Current status: Phase 4 complete.**
+This project is built in numbered phases. **Current status: Phase 5 complete.**
+
+---
+
+## Phase 5 — Reminders & calendar (done)
+
+The app now tells you what needs attention before it bites you:
+
+- **Daily reminder job.** A built-in scheduler recomputes reminders on startup
+  and every 24 hours, looking at registration / insurance / roadworthy expiry
+  dates and whether a service is due, and tagging each
+  **upcoming / due / overdue** (with 30 / 14 / 1-day alert levels).
+- **"Attention needed" dashboard.** Overdue and soon-due items appear on the
+  dashboard, colour-coded, each linking to its vehicle.
+- **Add to calendar.** Every reminder and dated record (registration,
+  insurance, roadworthy expiries, next service) has an **Add to calendar**
+  button that downloads a real `.ics` file (with a 14-day alarm) you can open
+  in Google / Apple / Outlook calendar.
+
+New endpoints: `GET /api/reminders` (`?attention=1` for the dashboard),
+`POST /api/reminders/recompute`, and `GET /api/calendar/event.ics`. Running the
+app is unchanged (two-terminal flow from Phase 2).
 
 ---
 

@@ -10,6 +10,7 @@ import { recordsApi } from '../api/records';
 import { usersApi } from '../api/users';
 import { RECORD_TYPES } from '../config/recordTypes';
 import { useAuth } from '../context/AuthContext';
+import { downloadIcs } from '../utils/calendar';
 import Spinner from './Spinner';
 
 // A single input row in the add/edit form.
@@ -64,10 +65,24 @@ function Field({ field, value, onChange, users }) {
   );
 }
 
-export default function RecordSection({ vehicleId, type }) {
+export default function RecordSection({ vehicleId, type, vehicleLabel = 'Vehicle' }) {
   const cfg = RECORD_TYPES[type];
   const { user } = useAuth();
   const canWrite = cfg.writeRoles.includes(user?.role);
+
+  // Build + download an .ics for a record, when its type supports it.
+  async function addToCalendar(record) {
+    const event = cfg.calendar?.(record, vehicleLabel);
+    if (!event || !event.date) return;
+    try {
+      await downloadIcs({
+        ...event,
+        filename: `${vehicleLabel}-${type}.ics`,
+      });
+    } catch (e) {
+      alert(e.message);
+    }
+  }
 
   const [records, setRecords] = useState(null);
   const [users, setUsers] = useState([]);
@@ -208,6 +223,16 @@ export default function RecordSection({ vehicleId, type }) {
                 </div>
                 <div className="flex items-center gap-3 pl-2">
                   {s.right && <span className="font-semibold">{s.right}</span>}
+                  {/* Add-to-calendar, when this record type + record has a date */}
+                  {cfg.calendar && cfg.calendar(r, vehicleLabel)?.date && (
+                    <button
+                      onClick={() => addToCalendar(r)}
+                      title="Add to calendar"
+                      className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-brand-600 hover:bg-slate-50"
+                    >
+                      📅
+                    </button>
+                  )}
                   {canWrite && (
                     <div className="flex gap-1">
                       <button

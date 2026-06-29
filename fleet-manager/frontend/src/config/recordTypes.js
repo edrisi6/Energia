@@ -34,6 +34,12 @@ export const RECORD_TYPES = {
       subtitle: `Expires ${date(r.expiry_date)}`,
       right: money(r.cost),
     }),
+    // "Add to calendar" uses the expiry date.
+    calendar: (r, vehicleLabel) => ({
+      date: r.expiry_date,
+      title: `${vehicleLabel} — Registration renewal`,
+      description: r.authority ? `Authority: ${r.authority}` : '',
+    }),
   },
 
   insurance: {
@@ -51,6 +57,11 @@ export const RECORD_TYPES = {
       subtitle: `Policy ${dash(r.policy_number)} · expires ${date(r.expiry_date)}`,
       right: money(r.premium),
     }),
+    calendar: (r, vehicleLabel) => ({
+      date: r.expiry_date,
+      title: `${vehicleLabel} — Insurance renewal`,
+      description: r.provider ? `Provider: ${r.provider}` : '',
+    }),
   },
 
   roadworthy: {
@@ -66,6 +77,11 @@ export const RECORD_TYPES = {
       title: r.passed ? '✅ Passed' : '❌ Not passed',
       subtitle: `Inspected ${date(r.inspection_date)} · expires ${date(r.expiry_date)}`,
       right: '',
+    }),
+    calendar: (r, vehicleLabel) => ({
+      date: r.expiry_date,
+      title: `${vehicleLabel} — Roadworthy inspection`,
+      description: '',
     }),
   },
 
@@ -86,6 +102,15 @@ export const RECORD_TYPES = {
       subtitle: `${date(r.date)} · ${dash(r.odometer_km)} km`,
       right: money(r.cost),
     }),
+    // Only offer a calendar event when a next-due date is set.
+    calendar: (r, vehicleLabel) =>
+      r.next_due_date
+        ? {
+            date: r.next_due_date,
+            title: `${vehicleLabel} — Next service`,
+            description: r.service_type ? `After: ${r.service_type}` : '',
+          }
+        : null,
   },
 
   repairs: {

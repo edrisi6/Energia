@@ -44,7 +44,7 @@ function ServiceStatus({ status }) {
   );
 }
 
-export default function MaintenanceTab({ vehicleId }) {
+export default function MaintenanceTab({ vehicleId, vehicleLabel }) {
   const [status, setStatus] = useState(null);
 
   // We reload the status whenever the tab mounts. (Adding rules/maintenance
@@ -72,7 +72,11 @@ export default function MaintenanceTab({ vehicleId }) {
         <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
           Maintenance log
         </h3>
-        <RecordSection vehicleId={vehicleId} type="maintenance" />
+        <RecordSection
+          vehicleId={vehicleId}
+          type="maintenance"
+          vehicleLabel={vehicleLabel}
+        />
       </div>
     </div>
   );

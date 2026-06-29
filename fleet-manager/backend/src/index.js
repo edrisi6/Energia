@@ -5,6 +5,7 @@
 const createApp = require('./app');
 const config = require('./config');
 const db = require('./db');
+const { startScheduler } = require('./scheduler');
 
 const app = createApp();
 
@@ -14,6 +15,8 @@ const server = app.listen(config.port, () => {
     `🚗 Fleet Manager API listening on http://localhost:${config.port} ` +
       `(db: ${config.db.client}, env: ${config.env})`
   );
+  // Start the daily reminder recompute job.
+  startScheduler();
 });
 
 // Graceful shutdown: stop accepting requests, then close the DB pool.
