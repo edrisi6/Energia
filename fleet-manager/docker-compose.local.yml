@@ -30,6 +30,10 @@ services:
       OWNER_NAME: Fleet Owner
       OWNER_USERNAME: owner
       OWNER_PIN: '123456'
+      # Optional AI photo-scanning: export ANTHROPIC_API_KEY before starting to
+      # turn it on; otherwise it stays off (free on-device scanning still works).
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-claude-opus-4-8}
     volumes:
       - fleet-data:/data
     expose:

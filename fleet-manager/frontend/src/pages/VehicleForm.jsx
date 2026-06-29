@@ -7,6 +7,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { vehiclesApi } from '../api/vehicles';
 import { documentsApi } from '../api/documents';
+import { aiApi } from '../api/ai';
+import PhotoField from '../components/PhotoField';
 import Spinner from '../components/Spinner';
 
 // The fields we collect, with labels and input types.
@@ -55,6 +57,12 @@ export default function VehicleForm() {
   // Files chosen on the form, keyed by slot type; uploaded after the vehicle
   // is saved (we need the vehicle's id first).
   const [files, setFiles] = useState({});
+  // Whether cloud AI scanning is available (set by the server admin).
+  const [aiEnabled, setAiEnabled] = useState(false);
+
+  useEffect(() => {
+    aiApi.status().then((s) => setAiEnabled(Boolean(s.enabled))).catch(() => {});
+  }, []);
 
   // When editing, load the current values into the form.
   useEffect(() => {
@@ -139,30 +147,67 @@ export default function VehicleForm() {
         ))}
 
         {/* Photos / documents */}
-        <div className="space-y-2 border-t border-slate-100 pt-4">
-          <h2 className="font-semibold">Photos & documents</h2>
-          <p className="text-sm text-slate-500">
-            Optional. Images or PDFs, up to 10 MB each.
-          </p>
-          {DOC_SLOTS.map((slot) => (
-            <div key={slot.type}>
-              <label className="label" htmlFor={`doc-${slot.type}`}>
-                {slot.label}
-              </label>
-              <input
-                id={`doc-${slot.type}`}
-                type="file"
-                accept="image/*,application/pdf"
-                className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-brand-700"
-                onChange={(e) =>
-                  setFiles((prev) => ({
-                    ...prev,
-                    [slot.type]: e.target.files?.[0] || undefined,
-                  }))
-                }
-              />
-            </div>
-          ))}
+        <div className="space-y-4 border-t border-slate-100 pt-4">
+          <div>
+            <h2 className="font-semibold">Photos &amp; documents</h2>
+            <p className="text-sm text-slate-500">
+              Optional. Take a photo or choose a file (images or PDFs, up to
+              10&nbsp;MB). Where you see scan buttons, the app can read the
+              number off the photo and fill the field for you.
+              {!aiEnabled && (
+                <span> (AI scanning is off — the free on-device scan still works.)</span>
+              )}
+            </p>
+          </div>
+
+          {/* Rego photo — fills the Registration number field */}
+          <PhotoField
+            label="Rego photo"
+            onFile={(f) => setFiles((p) => ({ ...p, rego: f || undefined }))}
+            scan={{
+              ocr: 'rego',
+              ai: 'rego',
+              aiEnabled,
+              onValues: (v) => v.rego && setField('rego_number', v.rego),
+            }}
+          />
+
+          {/* VIN plate photo — fills the VIN field */}
+          <PhotoField
+            label="VIN plate photo"
+            onFile={(f) => setFiles((p) => ({ ...p, vin_plate: f || undefined }))}
+            scan={{
+              ocr: 'vin',
+              ai: 'vin',
+              aiEnabled,
+              onValues: (v) => v.vin && setField('vin', v.vin),
+            }}
+          />
+
+          {/* Compliance document — stored only, no scan */}
+          <PhotoField
+            label="Insurance / Roadworthy / Test report"
+            onFile={(f) => setFiles((p) => ({ ...p, compliance: f || undefined }))}
+          />
+
+          {/* Spec-sheet AI scan — fills manufacturer fuel consumption. Photo is
+              used only to read the numbers; it isn't stored. AI only. */}
+          {aiEnabled && (
+            <PhotoField
+              label="Spec sheet (AI scan — fills fuel consumption, not stored)"
+              onFile={() => {}}
+              scan={{
+                ai: 'spec',
+                aiEnabled,
+                onValues: (v) => {
+                  if (v.l_per_100km != null)
+                    setField('manufacturer_l_per_100km', v.l_per_100km);
+                  if (v.engine_size) setField('engine_size', v.engine_size);
+                },
+              }}
+            />
+          )}
+
           {isEdit && (
             <p className="text-xs text-slate-400">
               Tip: you can also view, add and remove files from the vehicle's

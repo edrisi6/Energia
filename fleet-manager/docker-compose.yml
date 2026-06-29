@@ -47,6 +47,9 @@ services:
       LOCKOUT_MINUTES: ${LOCKOUT_MINUTES:-15}
       CORS_ORIGIN: ${APP_ORIGIN:-*}
       UPLOADS_DIR: /data/uploads
+      # Optional AI photo-scanning (off unless a key is provided).
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-claude-opus-4-8}
       OWNER_NAME: ${OWNER_NAME}
       OWNER_USERNAME: ${OWNER_USERNAME}
       OWNER_PIN: ${OWNER_PIN}

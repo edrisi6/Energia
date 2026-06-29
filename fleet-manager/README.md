@@ -4,7 +4,7 @@ A self-hostable, installable mobile web app (PWA) for managing a company
 vehicle fleet — registration, insurance, roadworthiness, maintenance, repairs,
 fuel, reminders and depreciation.
 
-This project is built in numbered phases. **Current status: Phase 7 complete.**
+This project is built in numbered phases. **Current status: Phase 8 complete.**
 
 ---
 
@@ -32,6 +32,31 @@ This local setup uses a built-in lightweight database (no password) and port
 
 > This is for trying it out only. To host it for real (your own domain + HTTPS),
 > see the **[Server Setup Guide](DEPLOYMENT.md)**.
+
+---
+
+## Phase 8 — Camera capture & photo scanning (done)
+
+Adding a vehicle's photos is now faster, and the app can read details off them:
+
+- **One-tap camera.** Each photo slot has a **📷 Take photo** button that opens
+  the camera directly on phones, alongside **📁 Choose file**.
+- **Free on-device scanning (OCR).** After taking a Rego or VIN photo, tap
+  **🔎 Scan (free)** — it reads the text *in the browser* (private, nothing is
+  uploaded) and fills the field for you to confirm.
+- **Optional cloud AI scanning.** When enabled, a **✨ Scan with AI** button
+  appears for higher accuracy, and a spec-sheet scanner can pull the
+  manufacturer's L/100km figure straight off a brochure. This is **off by
+  default** and several things keep the cost tiny:
+  - **Opt-in per scan** — it only runs when someone taps the button.
+  - **Bring-your-own-key, off by default** — no key, no feature, no cost. Turn
+    it on by setting `ANTHROPIC_API_KEY` (see `.env`); only Owners/Managers can
+    trigger a scan.
+  - **Images are downscaled** before sending, and you can pick the cheapest
+    model with `AI_MODEL=claude-haiku-4-5`.
+
+The fuel logs already carry a `source` field, so the planned automated feed from
+a petrol-station e-payment system can be added later without schema changes.
 
 ---
 

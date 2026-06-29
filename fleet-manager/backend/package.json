@@ -13,6 +13,7 @@
     "setup": "npm run migrate && npm run seed"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.65.0",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^11.3.0",
     "cors": "^2.8.5",

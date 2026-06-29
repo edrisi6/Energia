@@ -56,6 +56,20 @@ const config = {
     maxBytes: intEnv('UPLOAD_MAX_BYTES', 10 * 1024 * 1024), // 10 MB
   },
 
+  // Optional cloud AI for reading text/data out of photos (OCR + document
+  // understanding). OFF by default — it only turns on when an API key is
+  // provided, so there is zero cost unless you opt in. The on-device scanner
+  // and the opt-in-per-scan UI keep usage (and spend) minimal.
+  ai: {
+    apiKey: env('ANTHROPIC_API_KEY', env('AI_API_KEY', '')),
+    // Default to the most capable model; set AI_MODEL=claude-haiku-4-5 for the
+    // lowest cost per scan (plenty accurate for plates/VINs).
+    model: env('AI_MODEL', 'claude-opus-4-8'),
+    get enabled() {
+      return Boolean(this.apiKey);
+    },
+  },
+
   auth: {
     jwtSecret: env('JWT_SECRET', ''),
     jwtExpiresIn: env('JWT_EXPIRES_IN', '12h'),
