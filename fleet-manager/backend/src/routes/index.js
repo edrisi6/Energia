@@ -11,6 +11,7 @@ const userRoutes = require('./users');
 const reminderRoutes = require('./reminders');
 const calendarRoutes = require('./calendar');
 const aiRoutes = require('./ai');
+const vinRoutes = require('./vin');
 const { requireAuth } = require('../middleware/auth');
 const { requireRole } = require('../middleware/rbac');
 const { ROLES } = require('../utils/roles');
@@ -22,6 +23,7 @@ router.use('/users', userRoutes);
 router.use('/reminders', reminderRoutes);
 router.use('/calendar', calendarRoutes);
 router.use('/ai', aiRoutes);
+router.use('/vin', vinRoutes);
 router.use('/vehicles', vehicleRoutes);
 // Records + history live under a specific vehicle.
 router.use('/vehicles/:vehicleId', recordRoutes);

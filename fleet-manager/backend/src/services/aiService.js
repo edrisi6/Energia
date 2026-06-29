@@ -114,4 +114,61 @@ async function extractFromImage(buffer, mediaType, target) {
   return { target, data, model: config.ai.model };
 }
 
-module.exports = { status, extractFromImage, TARGETS };
+/**
+ * Estimate analytical specs (manufacturer fuel consumption) for a known
+ * make/model/year — fills the gap the free VIN database doesn't cover.
+ * The result is an estimate the user confirms.
+ */
+async function enrichSpecs({ make, model, year }) {
+  if (!config.ai.enabled) {
+    throw new ValidationError('AI is not configured on this server.');
+  }
+  if (!make && !model) {
+    throw new ValidationError('Decode or enter the make/model first.');
+  }
+
+  const Anthropic = require('@anthropic-ai/sdk');
+  const client = new Anthropic({ apiKey: config.ai.apiKey });
+
+  const schema = {
+    type: 'object',
+    properties: {
+      l_per_100km: { type: ['number', 'null'] },
+      note: { type: ['string', 'null'] },
+    },
+    required: ['l_per_100km', 'note'],
+    additionalProperties: false,
+  };
+
+  const response = await client.messages.create({
+    model: config.ai.model,
+    max_tokens: 300,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text:
+              `What is the manufacturer's official combined fuel consumption in ` +
+              `L/100km for a ${year || ''} ${make || ''} ${model || ''}? If ` +
+              `several engine variants exist, give a typical value and say so in ` +
+              `"note". Return null for l_per_100km if you are not reasonably sure.`,
+          },
+        ],
+      },
+    ],
+    output_config: { format: { type: 'json_schema', schema } },
+  });
+
+  const textBlock = response.content.find((b) => b.type === 'text');
+  let data = {};
+  try {
+    data = JSON.parse(textBlock ? textBlock.text : '{}');
+  } catch {
+    data = {};
+  }
+  return { data, model: config.ai.model };
+}
+
+module.exports = { status, extractFromImage, enrichSpecs, TARGETS };

@@ -55,4 +55,19 @@ router.post(
   }
 );
 
+// Estimate analytical specs (fuel consumption) for a known make/model/year.
+router.post(
+  '/enrich-specs',
+  requireRole(ROLES.OWNER, ROLES.MANAGER),
+  async (req, res, next) => {
+    try {
+      const { make, model, year } = req.body || {};
+      const result = await aiService.enrichSpecs({ make, model, year });
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 module.exports = router;

@@ -8,6 +8,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { vehiclesApi } from '../api/vehicles';
 import { documentsApi } from '../api/documents';
 import { aiApi } from '../api/ai';
+import { vinApi } from '../api/vin';
 import PhotoField from '../components/PhotoField';
 import Spinner from '../components/Spinner';
 
@@ -19,7 +20,6 @@ const FIELDS = [
   { name: 'engine_size', label: 'Engine size', type: 'text' },
   { name: 'fuel_type', label: 'Fuel type', type: 'text' },
   { name: 'rego_number', label: 'Registration number', type: 'text' },
-  { name: 'vin', label: 'VIN', type: 'text' },
   { name: 'purchase_price', label: 'Purchase price', type: 'number' },
   { name: 'purchase_date', label: 'Purchase date', type: 'date' },
   { name: 'current_value', label: 'Current value (manual override)', type: 'number' },
@@ -59,10 +59,79 @@ export default function VehicleForm() {
   const [files, setFiles] = useState({});
   // Whether cloud AI scanning is available (set by the server admin).
   const [aiEnabled, setAiEnabled] = useState(false);
+  // VIN-decode status + busy flags for the "start with the VIN" flow.
+  const [vinStatus, setVinStatus] = useState('');
+  const [vinBusy, setVinBusy] = useState(false);
+  const [enrichBusy, setEnrichBusy] = useState(false);
 
   useEffect(() => {
     aiApi.status().then((s) => setAiEnabled(Boolean(s.enabled))).catch(() => {});
   }, []);
+
+  // Decode a VIN and auto-fill make/model/year/engine/fuel.
+  async function decodeAndFill(vin) {
+    if (!vin || vin.replace(/[^a-z0-9]/gi, '').length < 11) {
+      setVinStatus('Enter or scan a VIN first.');
+      return;
+    }
+    setVinBusy(true);
+    setVinStatus('Looking up the VIN…');
+    try {
+      const r = await vinApi.decode(vin);
+      setField('vin', r.vin);
+      if (!r.decoded) {
+        setVinStatus("Couldn't find details for that VIN — you can type them in below.");
+        return;
+      }
+      const f = r.fields;
+      const filled = [];
+      if (f.make) { setField('make', f.make); filled.push(f.make); }
+      if (f.model) { setField('model', f.model); filled.push(f.model); }
+      if (f.year) { setField('year', String(f.year)); filled.push(f.year); }
+      if (f.engine_size) setField('engine_size', f.engine_size);
+      if (f.fuel_type) setField('fuel_type', f.fuel_type);
+      setVinStatus(
+        `✅ Filled in: ${filled.join(' ')}. Review the details below and save.`
+      );
+    } catch (e) {
+      setVinStatus(e.message || 'VIN lookup failed.');
+    } finally {
+      setVinBusy(false);
+    }
+  }
+
+  // Called when the VIN was read off a photo — decode automatically.
+  function onVinScanned(v) {
+    if (v.vin) {
+      setField('vin', v.vin);
+      decodeAndFill(v.vin);
+    }
+  }
+
+  // Optional: estimate fuel consumption with AI once make/model are known.
+  async function enrichWithAI() {
+    setEnrichBusy(true);
+    setVinStatus('Estimating fuel consumption…');
+    try {
+      const { data } = await aiApi.enrichSpecs({
+        make: form.make,
+        model: form.model,
+        year: form.year,
+      });
+      if (data.l_per_100km != null) {
+        setField('manufacturer_l_per_100km', data.l_per_100km);
+        setVinStatus(
+          `Estimated ${data.l_per_100km} L/100km${data.note ? ` (${data.note})` : ''} — please confirm.`
+        );
+      } else {
+        setVinStatus("AI couldn't find a fuel-consumption figure for this vehicle.");
+      }
+    } catch (e) {
+      setVinStatus(e.message || 'AI lookup failed.');
+    } finally {
+      setEnrichBusy(false);
+    }
+  }
 
   // When editing, load the current values into the form.
   useEffect(() => {
@@ -119,6 +188,72 @@ export default function VehicleForm() {
       </h1>
 
       <form onSubmit={handleSubmit} className="card space-y-4 p-4">
+        {/* VIN-first: the fastest way to add a vehicle. Photograph the VIN
+            plate (or type the VIN) and we look up the rest automatically. */}
+        {!isEdit && (
+          <div className="space-y-3 rounded-2xl border border-brand-100 bg-brand-50 p-4">
+            <div>
+              <h2 className="font-semibold text-brand-700">
+                Start with the VIN{' '}
+                <span className="rounded-full bg-brand-600 px-2 py-0.5 text-xs text-white">
+                  fastest
+                </span>
+              </h2>
+              <p className="text-sm text-slate-600">
+                Photograph the VIN plate — the app reads it and fills in the
+                make, model, year, engine and fuel for you. Then just review and
+                save.
+              </p>
+            </div>
+
+            <PhotoField
+              label="VIN plate photo"
+              onFile={(f) => setFiles((p) => ({ ...p, vin_plate: f || undefined }))}
+              scan={{ ocr: 'vin', ai: 'vin', aiEnabled, onValues: onVinScanned }}
+            />
+
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <label className="label" htmlFor="vin-input">
+                  …or type the VIN
+                </label>
+                <input
+                  id="vin-input"
+                  className="input"
+                  value={form.vin ?? ''}
+                  onChange={(e) => setField('vin', e.target.value)}
+                  placeholder="17-character VIN"
+                />
+              </div>
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={vinBusy}
+                onClick={() => decodeAndFill(form.vin)}
+              >
+                {vinBusy ? '…' : 'Decode'}
+              </button>
+            </div>
+
+            {aiEnabled && (form.make || form.model) && (
+              <button
+                type="button"
+                className="btn-ghost text-sm"
+                disabled={enrichBusy}
+                onClick={enrichWithAI}
+              >
+                {enrichBusy ? 'Estimating…' : '✨ Fill fuel consumption with AI'}
+              </button>
+            )}
+
+            {vinStatus && (
+              <p className="rounded-lg bg-white/70 px-3 py-2 text-sm text-slate-700">
+                {vinStatus}
+              </p>
+            )}
+          </div>
+        )}
+
         {FIELDS.map((f) => (
           <div key={f.name}>
             <label className="label" htmlFor={f.name}>
@@ -169,18 +304,6 @@ export default function VehicleForm() {
               ai: 'rego',
               aiEnabled,
               onValues: (v) => v.rego && setField('rego_number', v.rego),
-            }}
-          />
-
-          {/* VIN plate photo — fills the VIN field */}
-          <PhotoField
-            label="VIN plate photo"
-            onFile={(f) => setFiles((p) => ({ ...p, vin_plate: f || undefined }))}
-            scan={{
-              ocr: 'vin',
-              ai: 'vin',
-              aiEnabled,
-              onValues: (v) => v.vin && setField('vin', v.vin),
             }}
           />
 

@@ -4,7 +4,7 @@ A self-hostable, installable mobile web app (PWA) for managing a company
 vehicle fleet — registration, insurance, roadworthiness, maintenance, repairs,
 fuel, reminders and depreciation.
 
-This project is built in numbered phases. **Current status: Phase 8 complete.**
+This project is built in numbered phases. **Current status: Phase 9 complete.**
 
 ---
 
@@ -92,6 +92,24 @@ After this, the app is a standalone repo on `main`, and updates are a plain
 `git pull`. (I can't create or push that new repo from here — my access is
 limited to the Energia repo — but the steps above do it from your machine in a
 couple of minutes.)
+
+---
+
+## Phase 9 — VIN-first add-a-vehicle (done)
+
+Adding a vehicle is now mostly automatic — minimal typing:
+
+- **Start with the VIN.** The add-vehicle form leads with a "Start with the
+  VIN" card: photograph the VIN plate (or type the VIN), and the app reads it.
+- **Automatic lookup.** The VIN is decoded against the **free, public NHTSA
+  vPIC database** (no API key, no cost) to fill in **make, model, year, engine
+  and fuel type** — you just review and save.
+- **Optional AI top-up.** When AI is enabled, one tap estimates the
+  manufacturer's fuel consumption (L/100km) for the decoded vehicle.
+
+Endpoint: `GET /api/vin/decode?vin=...` (free) and `POST /api/ai/enrich-specs`
+(optional, owner/manager). The VIN decoder needs outbound internet to reach the
+public database — that's available on any normal server/computer.
 
 ---
 

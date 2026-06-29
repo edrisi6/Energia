@@ -8,6 +8,10 @@ import { resizeImage } from '../utils/imageResize';
 export const aiApi = {
   status: () => api.get('/ai/status'),
 
+  // Estimate fuel consumption for a known make/model/year.
+  enrichSpecs: ({ make, model, year }) =>
+    api.post('/ai/enrich-specs', { make, model, year }),
+
   async extract(file, target) {
     const small = await resizeImage(file, 1500, 0.8);
     const form = new FormData();
