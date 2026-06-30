@@ -1,0 +1,6 @@
+node_modules
+.env
+lamees.db
+data/
+.git
+*.md

@@ -14,7 +14,7 @@ const {
   VAPID_EMAIL,
   PORT = 3000,
   TZ   = 'Australia/Melbourne',
-  DB_PATH = './lamees.db',
+  DB_PATH = './data/lamees.db',
 } = process.env;
 
 if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY || !VAPID_EMAIL) {
